@@ -1,0 +1,234 @@
+.compact-inspector {
+  align-self: start;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow: auto;
+  display: block;
+}
+.inspector-selection {
+  padding: 22px 20px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.inspector-selection > span {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #7f8ba6;
+}
+.inspector-selection h3 {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+  margin: 9px 0 0;
+  color: #c9d3eb;
+  overflow-wrap: anywhere;
+}
+.inspector-body {
+  padding: 20px;
+}
+.inspector-values {
+  margin: 0;
+}
+.inspector-values > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 0 0 18px;
+}
+.inspector-values dt,
+.inspector-editor label {
+  font-size: 11px;
+  color: #9ba7c0;
+}
+.inspector-values dd {
+  margin: 0;
+  font:
+    13px "Cascadia Code",
+    Consolas,
+    monospace;
+  color: #d6dff1;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.inspector-editor {
+  margin: 4px 0 20px;
+}
+.inspector-editor label {
+  display: block;
+  margin-bottom: 9px;
+}
+.inspector-edit-row {
+  display: flex;
+  gap: 8px;
+}
+.inspector-edit-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #3b4359;
+  border-radius: 3px;
+  background: #06070c;
+  color: #e2e8f6;
+  font:
+    14px "Cascadia Code",
+    Consolas,
+    monospace;
+}
+.inspector-edit-row button {
+  padding: 0 12px;
+  background: #b6c6e7;
+  color: #121624;
+  border-radius: 3px;
+  font-size: 11px;
+  min-width: 53px;
+}
+.inspector-draft {
+  display: block;
+  font-size: 9px;
+  color: #c4b49a;
+  margin-top: 8px;
+}
+.inspector-result {
+  border-top: 1px solid #2b3142;
+  padding: 18px 0 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.inspector-result > span {
+  font-size: 11px;
+  color: #a8b4ce;
+}
+.inspector-result small {
+  display: block;
+  color: #71809d;
+  font-size: 9px;
+  margin-top: 5px;
+}
+.inspector-result strong {
+  font:
+    22px "Space Grotesk",
+    sans-serif;
+  color: #dce6fb;
+}
+.inspector-output {
+  margin-bottom: 23px;
+}
+.inspector-output > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #a8b4ce;
+}
+.inspector-output > span small {
+  font:
+    10px "Cascadia Code",
+    Consolas,
+    monospace;
+  color: #919db7;
+}
+.inspector-output > strong {
+  display: block;
+  font:
+    30px "Space Grotesk",
+    sans-serif;
+  color: #e2eafa;
+  margin-top: 10px;
+}
+.inspector-output > small {
+  display: block;
+  font-size: 10px;
+  color: #7f8ba6;
+  line-height: 1.7;
+  margin-top: 12px;
+}
+.inspector-breakdown {
+  margin-top: 8px;
+  border-top: 1px solid #252c3d;
+  padding-top: 16px;
+}
+.inspector-breakdown summary,
+.inspector-history summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: #a9b5cf;
+  line-height: 1.6;
+}
+.inspector-breakdown summary > span,
+.inspector-history summary > span {
+  float: right;
+  color: #66738d;
+  font: 10px monospace;
+}
+.incoming-head,
+.incoming-row {
+  display: grid;
+  grid-template-columns: 28px repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: right;
+}
+.incoming-head {
+  font-size: 8px;
+  color: #74839f;
+  margin: 18px 0 8px;
+}
+.incoming-head > span:first-child,
+.incoming-row > span:first-child {
+  text-align: left;
+}
+.incoming-row {
+  padding: 9px 0;
+  border-top: 1px solid #1c2230;
+  font-size: 9px;
+  color: #7f8ba6;
+  border-radius: 2px;
+}
+.incoming-row:hover {
+  background: #121827;
+}
+.incoming-row code {
+  font-size: 10px;
+  color: #9daac4;
+}
+.incoming-row strong {
+  font: 10px monospace;
+  color: #d1dcf2;
+}
+.inspector-history {
+  padding: 17px 20px;
+  border-top: 1px solid #252c3d;
+}
+.inspector-history .revision-list {
+  max-height: 220px;
+}
+.matrix-view select {
+  max-width: 100%;
+  background: #0a0c14;
+  border: 1px solid #34394a;
+  color: #c7d0e6;
+  border-radius: 3px;
+  padding: 8px;
+  margin: 12px 0 0;
+  font-size: 11px;
+}
+.matrix-view .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 960px) {
+  .compact-inspector {
+    position: static;
+    max-height: none;
+    grid-column: 1/-1;
+  }
+}

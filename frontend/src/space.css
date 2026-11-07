@@ -1,0 +1,442 @@
+/* Observatory: near-black surfaces and restrained instrument labels. */
+/* Labels are WebGL children of graph objects. DOM controls only provide keyboard access. */
+.graph-hit-targets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.graph-hit-targets .scene-proxy {
+  position: absolute;
+  transform: none;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.graph-hit-targets .scene-proxy:focus-visible {
+  opacity: 1;
+  color: transparent;
+  background: transparent;
+  box-shadow: none;
+  outline: 1px solid #c4d2f1;
+  outline-offset: 3px;
+}
+.graph-hit-targets .scene-proxy:focus-visible * {
+  visibility: hidden;
+}
+.neuron-labels .stage-label {
+  display: none;
+}
+:root {
+  --mint: #b4c5e9;
+  --peach: #d3a997;
+  --muted: #8e93a4;
+  --line: #20222e;
+  --panel: #090b12;
+  background: #030409;
+  color: #d7dae5;
+}
+body,
+.app-shell {
+  background: #030409;
+}
+.app-header {
+  background: #06070b;
+  border-color: #20222b;
+}
+.brand {
+  font-weight: 400;
+  letter-spacing: -1px;
+}
+.brand-icon {
+  background: transparent;
+  color: #bbc6e1;
+  border: 1px solid #363b4c;
+  border-radius: 50%;
+}
+.brand-light {
+  color: #c8d4f3;
+}
+.alpha {
+  color: #7e8396;
+  border-color: #2a2c38;
+  font-size: 8px;
+  letter-spacing: 1.6px;
+}
+.sidebar,
+.inspector {
+  background: #06070c;
+  border-color: #20222b;
+}
+.sidebar h1 {
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+}
+.sidebar-description,
+.model-heading p,
+.muted {
+  color: #8e93a4;
+}
+.sidebar-heading,
+.section-label {
+  color: #858b9d;
+  letter-spacing: 1.8px;
+  font-size: 9px;
+}
+.sample-card {
+  border-radius: 3px;
+}
+.sample-card.active {
+  background: #10131e;
+  border-color: #3b435c;
+}
+.sample-card:hover:not(.active),
+.layer-list button:hover {
+  background: #11131b;
+}
+.sample-icon,
+.sample-card.active .sample-icon {
+  background: transparent;
+  color: #aebada;
+}
+.sample-card small {
+  color: #888fa2;
+}
+.sample-card > svg {
+  color: #7f8aa3;
+}
+.layer-list .chosen {
+  background: #141722;
+  color: #d4dbef;
+}
+.layer-list code {
+  color: #81879a;
+}
+.sidebar-note {
+  background: transparent;
+  border-color: #252835;
+  border-radius: 3px;
+  box-shadow: none;
+}
+.sidebar-note strong {
+  color: #b0b7cc;
+}
+.sidebar-note p,
+.sidebar-footer {
+  color: #81899d;
+}
+.status-dot {
+  background: #aabddd;
+  box-shadow: none;
+}
+.model-heading h2 {
+  font-weight: 400;
+  letter-spacing: -0.5px;
+}
+.breadcrumb {
+  color: #9aa3ba;
+}
+.secondary-button {
+  background: #0c0e16;
+  border-color: #333746;
+  border-radius: 3px;
+}
+.model-meta {
+  color: #959caf;
+}
+.model-meta > span:last-child {
+  color: #aeb9d1;
+}
+.canvas-card,
+.experiment-panel {
+  background: #080910;
+  border-color: #272a38;
+  border-radius: 4px;
+}
+.canvas-toolbar {
+  background: #090b12;
+  border-color: #242734;
+}
+.view-tabs button.active {
+  color: #d0dbf5;
+  border-color: #a7badf;
+}
+.canvas-footer {
+  border-color: #242734;
+  color: #9099af;
+  background: #080a11;
+}
+.legend-dot.mint,
+.legend-line {
+  background: #b4c5e9;
+}
+.legend-dot.peach {
+  background: #d3a997;
+}
+.model-meta .modified {
+  color: #d5bb9e !important;
+}
+.experiment-panel {
+  padding-top: 22px;
+}
+.run-status {
+  background: transparent;
+  border: 1px solid #2d3447;
+  color: #b4c5e9;
+}
+.input-control input,
+.trace-timeline input {
+  accent-color: #bdcbed;
+}
+.input-control code,
+.output-values strong {
+  color: #d2dcf4;
+}
+.inputs,
+.inspector-title,
+.inspector-section {
+  border-color: #242734;
+}
+.tiny-tag {
+  background: transparent;
+  border: 1px solid #343b50;
+  color: #acbbda;
+}
+.operation-formula {
+  background: #0b0d16;
+  border-color: #2a2f40;
+  color: #becbe8;
+  font-size: 17px;
+  letter-spacing: 0;
+  border-radius: 3px;
+}
+.inspector select {
+  background: #0a0c14;
+  border-color: #34394a;
+  border-radius: 3px;
+}
+.matrix-row button {
+  background: #141d31;
+  border-color: #2b3a59;
+  color: #c5d2ed;
+  border-radius: 3px;
+}
+.matrix-row .negative {
+  background: #261b1b;
+  border-color: #503d39;
+  color: #deb5a3;
+}
+.edit-row input {
+  background: #06070c;
+  border-color: #3b4359;
+}
+.edit-row button {
+  background: #b6c6e7;
+  color: #121624;
+  border-radius: 3px;
+}
+.edit-note {
+  color: #939db5;
+}
+.contribution strong {
+  color: #c4cbdf;
+}
+.computation-total {
+  border-color: #303547;
+}
+.computation-total strong {
+  color: #cedaf2;
+}
+.revision-list button:hover {
+  background: #151824;
+}
+.revision-list button > svg {
+  color: #b6c5e3;
+}
+.revision-mark {
+  border-color: #a5b5d6;
+}
+.current .revision-mark {
+  background: #a5b5d6;
+}
+.inspector-footer,
+.main-footer {
+  color: #7d879f;
+}
+.main-footer span:first-child {
+  font-size: 0;
+}
+.main-footer span:first-child:after {
+  content: "NEUROLABS / LOCAL";
+  font-size: 8px;
+  letter-spacing: 2px;
+}
+.canvas-content:has(.network-3d) {
+  height: 590px;
+}
+.network-3d {
+  background: #030409;
+}
+.trace-controls {
+  background: #080a11;
+  border-color: #242734;
+}
+.trace-controls button,
+.trace-controls select {
+  background: #0d101a;
+  border-color: #333c51;
+  border-radius: 3px;
+  color: #b9c4df;
+}
+.trace-controls .trace-start {
+  background: #c1cdec;
+  color: #101420;
+  border-color: #c1cdec;
+}
+.trace-timeline {
+  background: #080a11;
+  border-color: #242734;
+}
+.trace-timeline span {
+  color: #bac8e6;
+}
+.trace-timeline small {
+  color: #8d95a9;
+}
+.three-hint {
+  color: #949bb0;
+  font-size: 10px;
+}
+.stage-label {
+  font-size: 11px;
+  color: #b4bfd8;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.stage-label small {
+  color: #6f7890;
+  letter-spacing: 1px;
+}
+.neuron-label {
+  background: #050710d9;
+  color: #d4dbee;
+  min-width: 32px;
+  padding: 3px 7px;
+  border-radius: 3px;
+}
+.neuron-label.picked {
+  border-color: #a9badf;
+}
+.neuron-label.blocked {
+  color: #8992a8;
+}
+.neuron-label small {
+  color: #a0a2b2;
+}
+.edge-weight,
+.neuron-bias {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  white-space: nowrap;
+  z-index: 2;
+  font:
+    11px "Cascadia Code",
+    Consolas,
+    monospace;
+  color: #b9c5df;
+  border: 1px solid #343e56;
+  background: #080c17ed;
+  border-radius: 3px;
+  padding: 4px 7px;
+  box-shadow: 0 0 9px #0009;
+}
+.edge-weight small,
+.neuron-bias small {
+  color: #7d8cab;
+  font-size: 9px;
+}
+.edge-weight:hover,
+.neuron-bias:hover {
+  color: white;
+  border-color: #afbfdf;
+  background: #182037;
+}
+.edge-weight.picked,
+.neuron-bias.picked {
+  border-color: #d0ddff;
+  color: #e5edff;
+  background: #1b2641;
+}
+.neuron-bias {
+  z-index: 3;
+  border-radius: 14px;
+  padding: 5px 8px;
+  background: #0a101dd9;
+  border-color: #657ca5;
+  font-size: 10px;
+}
+.detail-location {
+  display: flex;
+  justify-content: space-between;
+  color: #8796b3;
+  font: 10px monospace;
+  margin-bottom: 18px;
+  gap: 8px;
+}
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  color: #9ca8c2;
+  margin: 12px 0;
+}
+.detail-row strong {
+  font: 12px monospace;
+  color: #d8e1f6;
+}
+.edge-equation {
+  padding: 15px 8px;
+  background: #0b101e;
+  border: 1px solid #303b54;
+  text-align: center;
+  font: 13px monospace;
+  color: #9faecc;
+  line-height: 1.6;
+}
+.edge-equation strong {
+  color: #e0e9ff;
+}
+.selected-detail p,
+.neuron-detail p {
+  font-size: 10px;
+  color: #8d96ad;
+  margin-bottom: 12px;
+}
+.detail-context {
+  font-size: 8px;
+  color: #7585a3;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+@media (max-width: 640px) {
+  .canvas-content:has(.network-3d) {
+    height: 540px;
+  }
+  .alpha {
+    display: none;
+  }
+  .edge-weight {
+    font-size: 10px;
+    padding: 3px 5px;
+  }
+  .three-hint {
+    font-size: 8px;
+  }
+}
