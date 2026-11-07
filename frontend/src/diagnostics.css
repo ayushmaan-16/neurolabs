@@ -1,0 +1,225 @@
+.canvas-content:has(.diagnostic-view:not([hidden])) {
+  height: auto;
+}
+.diagnostic-view[hidden] {
+  display: none;
+}
+.diagnostics {
+  padding: 24px;
+  color: #b7c2d8;
+  font-size: 12px;
+}
+.diagnostics h3,
+.diagnostics h4 {
+  color: #d4dcef;
+  font-weight: 500;
+}
+.diagnostics h3 {
+  font:
+    22px "Space Grotesk",
+    sans-serif;
+  margin: 0 0 8px;
+}
+.diagnostics h4 {
+  font-size: 14px;
+  margin: 26px 0 8px;
+}
+.diagnostics p {
+  font-size: 11px;
+  color: #8f9ab1;
+  margin: 7px 0 14px;
+}
+.audit-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+.diagnostics label {
+  display: block;
+  color: #b5c0d9;
+  font-size: 11px;
+}
+.diagnostics textarea,
+.diagnostics select {
+  width: 100%;
+  background: #05070d;
+  color: #c3cee5;
+  border: 1px solid #333c51;
+  padding: 9px;
+  border-radius: 3px;
+  margin-top: 8px;
+}
+.diagnostics textarea {
+  height: 148px;
+  resize: vertical;
+  font:
+    11px/1.6 Consolas,
+    monospace;
+}
+.diagnostics button,
+.audit-file {
+  padding: 7px 10px;
+  border: 1px solid #333c51;
+  background: #10131e;
+  border-radius: 3px;
+  color: #bac7e5;
+  font-size: 11px;
+  cursor: pointer;
+}
+.diagnostics button:hover,
+.audit-file:hover {
+  border-color: #899aba;
+}
+.audit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.audit-file {
+  position: relative;
+  overflow: hidden;
+}
+.audit-file input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.audit-file:focus-within {
+  outline: 2px solid #b4c5e9;
+  outline-offset: 3px;
+}
+.diagnostics .audit-run {
+  background: #bac7e5;
+  color: #0d111d;
+  margin: 10px 0;
+}
+.audit-settings small {
+  display: block;
+  font-size: 10px;
+  color: #818da6;
+  line-height: 1.7;
+}
+.diagnostics .audit-error {
+  border: 1px solid #795747;
+  color: #e4b9a4;
+  padding: 10px;
+  margin-top: 18px;
+}
+.audit-results {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid #242734;
+}
+.audit-result-heading,
+.audit-neuron-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.audit-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 20px 0 12px;
+}
+.audit-metrics > div {
+  padding: 13px;
+  border: 1px solid #292f40;
+  border-radius: 4px;
+}
+.audit-metrics span {
+  display: block;
+  min-height: 32px;
+  font-size: 10px;
+  color: #8e9bb4;
+  line-height: 1.5;
+}
+.audit-metrics strong {
+  display: block;
+  margin-top: 6px;
+  font:
+    22px "Space Grotesk",
+    sans-serif;
+  color: #c8d5ee;
+}
+.audit-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid #252b3a;
+  border-radius: 3px;
+}
+.diagnostics table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  text-align: left;
+}
+.diagnostics th {
+  font-weight: 500;
+  color: #8d9bb6;
+  background: #0c101a;
+}
+.diagnostics th,
+.diagnostics td {
+  padding: 10px 9px;
+  border-bottom: 1px solid #222836;
+  white-space: nowrap;
+}
+.diagnostics td {
+  font-variant-numeric: tabular-nums;
+}
+.diagnostics td button {
+  font-size: 10px;
+  padding: 5px 8px;
+}
+.audit-selected {
+  background: #101523;
+}
+.audit-flagged {
+  background: #241b18;
+}
+.audit-neurons {
+  max-height: 360px;
+}
+.audit-neuron-heading label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.audit-neuron-heading select {
+  width: auto;
+  margin: 0;
+  max-width: 100%;
+}
+.diagnostics .audit-provenance {
+  margin: 18px 0 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .diagnostics {
+    padding: 16px 12px;
+  }
+  .audit-inputs {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .audit-neuron-heading label {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .view-hint {
+    display: none;
+  }
+  .view-tabs {
+    flex-wrap: wrap;
+  }
+  .view-tabs button {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}

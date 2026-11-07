@@ -117,3 +117,11 @@ class RunRequest(Contract):
 class CheckoutRequest(Contract):
     expected_head: str = Field(min_length=1, max_length=64)
     revision_id: str = Field(min_length=1, max_length=64)
+
+
+class DiagnosticRequest(Contract):
+    revision_id: str = Field(min_length=1, max_length=64)
+    baseline_revision_id: str = Field(min_length=1, max_length=64)
+    inputs: tuple[Annotated[tuple[float, ...], Field(min_length=1, max_length=256)], ...] = Field(
+        min_length=2, max_length=256
+    )

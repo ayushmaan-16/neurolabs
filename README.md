@@ -4,10 +4,16 @@ A local neural-network laboratory. Inspect actual computations, edit parameters,
 behavior, and restore immutable revisions. The future research target is blinded inference
 and repair of mathematical behavior from corrupted weights.
 
-**Status:** first working foundation preview. Bundled dense models only. See
+**Status:** first working foundation preview. The browser uses bundled dense models;
+the Python audit bridge accepts supported in-memory MLPs. See
 [implementation status](docs/status.md) and the [architecture/research contract](docs/architecture.md).
 
 ![neuroLabs workspace](docs/images/workspace.png)
+
+**New: batch diagnostics.** Audit inactive ReLU/saturated activations across input batches,
+compare revisions on identical inputs, inspect affected neurons/cases in 3D, and export
+the evidence. An in-memory Python bridge also accepts supported float32 Sequential MLPs
+from your own code. See [the two engineering workflows](docs/diagnostics.md) for scope and usage.
 
 ## Requirements
 

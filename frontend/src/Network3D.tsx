@@ -18,6 +18,7 @@ export function Network3D({
   selection,
   selectionKind,
   onParameterSelect,
+  initialDetail = "overview",
 }: {
   model: Model;
   parameters: Parameters | null;
@@ -28,6 +29,7 @@ export function Network3D({
   selection: { tensorId: string; index: number[] };
   selectionKind: "neuron" | "edge";
   onParameterSelect: (tensorId: string, index: number[]) => void;
+  initialDetail?: GraphDetail;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const hitTargets = useRef(new Map<string, HTMLElement>());
@@ -42,7 +44,7 @@ export function Network3D({
   const resetCamera = useRef<() => void>(() => {});
   const cameraState = useRef<CameraPose | null>(null);
   const cameraView = useRef("");
-  const [detail, setDetail] = useState<GraphDetail>("overview");
+  const [detail, setDetail] = useState<GraphDetail>(initialDetail);
   const [focusLayer, setFocusLayer] = useState(1);
   const stages = useMemo(() => {
     const result: GraphStage[] = [

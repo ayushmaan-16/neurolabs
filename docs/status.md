@@ -34,6 +34,11 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
   editor where present. Incoming contributions and history are expandable. Full tensor
   selection/matrices live in the Weights tab. Editor text round-trips float32 values without
   long binary-representation decimals or creating revisions for unchanged effective values.
+- Batch diagnostics: custom numeric CSV inputs, observed ReLU inactivity, Tanh/Sigmoid
+  saturation, per-layer/neuron statistics, matched-revision changes, largest-change inputs,
+  graph inspection links and downloadable reports with provenance/fingerprints.
+- Python-only `analyze_sequential` bridge for an engineer's own supported float32 MLP;
+  browser model import remains unavailable. See [diagnostic workflows](diagnostics.md).
 
 ## Remaining feasibility gates
 
@@ -46,7 +51,7 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
 
 ## Deliberate preview limits
 
-Only bundled samples are exposed. No upload/export, agent, training, gradient tools,
+The browser exposes bundled samples only. No model upload/export, agent, training, gradient tools,
 or arbitrary architecture support. Bundled parameter tables are returned whole; bounded
 slice APIs are required before import. History lists at most 100 recent revisions.
 Restoration works through history; a dedicated undo/redo toolbar is not implemented.

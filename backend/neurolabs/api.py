@@ -10,9 +10,10 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from neurolabs.diagnostics import analyze
 from neurolabs.runtime import execute
 from neurolabs.samples import samples
-from neurolabs.schema import CheckoutRequest, EditRequest, RunRequest
+from neurolabs.schema import CheckoutRequest, DiagnosticRequest, EditRequest, RunRequest
 from neurolabs.store import ConflictError, Store
 
 
@@ -120,7 +121,7 @@ def create_app(root: Path | None = None) -> FastAPI:
     @app.get("/api/v1/models/{model_id}/revisions/{revision_id}/parameters")
     def parameters(model_id: str, revision_id: str):
         _, values = store.snapshot(model_id, revision_id)
-        # Sample fixtures are tiny. Bounded slices replace this endpoint before user import.
+        # Bundled models only. Bounded slices replace this endpoint before browser model import.
         return {
             "revision_id": revision_id,
             "tensors": {
@@ -142,6 +143,19 @@ def create_app(root: Path | None = None) -> FastAPI:
         spec, values = store.snapshot(model_id, request.revision_id)
         return store.record_run(
             execute(spec, values, request.inputs, request.revision_id, request.captures)
+        )
+
+    @app.post("/api/v1/models/{model_id}/diagnostics")
+    def diagnostics(model_id: str, request: DiagnosticRequest):
+        spec, values = store.snapshot(model_id, request.revision_id)
+        _, baseline = store.snapshot(model_id, request.baseline_revision_id)
+        return analyze(
+            spec,
+            values,
+            baseline,
+            request.inputs,
+            request.revision_id,
+            request.baseline_revision_id,
         )
 
     dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"

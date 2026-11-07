@@ -28,6 +28,7 @@ import {
 import { Network3D } from "./Network3D";
 import { Plot } from "./Plot";
 import { Inspector } from "./Inspector";
+import { Diagnostics } from "./Diagnostics";
 
 export function App() {
   const [models, setModels] = useState<Model[]>([]);
@@ -37,7 +38,10 @@ export function App() {
     "neuron",
   );
   const [inputNeuron, setInputNeuron] = useState(0);
-  const [tab, setTab] = useState<"architecture" | "weights">("architecture");
+  const [tab, setTab] = useState<"architecture" | "weights" | "diagnostics">(
+    "architecture",
+  );
+  const [focusAuditNeuron, setFocusAuditNeuron] = useState(false);
   const [parameters, setParameters] = useState<Parameters | null>(null);
   const [baseline, setBaseline] = useState<Parameters | null>(null);
   const [history, setHistory] = useState<Revision[]>([]);
@@ -109,6 +113,7 @@ export function App() {
     setSweep(null);
     setOriginalSweep(null);
     setHistory([]);
+    setFocusAuditNeuron(false);
   }, [model?.spec.id]);
 
   useEffect(() => {
@@ -487,11 +492,19 @@ export function App() {
                       <Grid2X2 size={14} />
                       Weights
                     </button>
+                    <button
+                      className={tab === "diagnostics" ? "active" : ""}
+                      onClick={() => setTab("diagnostics")}
+                    >
+                      <Activity size={14} /> Diagnostics
+                    </button>
                   </div>
                   <span className="view-hint">
                     {tab === "architecture"
                       ? "3D neuron graph"
-                      : "Select a cell to edit"}
+                      : tab === "weights"
+                        ? "Select a cell to edit"
+                        : "Batch audit & revision comparison"}
                   </span>
                 </div>
                 <div className="canvas-content">
@@ -499,6 +512,7 @@ export function App() {
                     <Network3D
                       key={model.spec.id}
                       model={model}
+                      initialDetail={focusAuditNeuron ? "neuron" : "overview"}
                       parameters={currentParameters}
                       selection={{ tensorId, index: coordinate }}
                       selectionKind={selectionKind}
@@ -510,7 +524,7 @@ export function App() {
                         selectNode(id, index);
                       }}
                     />
-                  ) : (
+                  ) : tab === "weights" ? (
                     <div className="matrix-view">
                       <div className="section-label">
                         PARAMETER MATRIX{" "}
@@ -566,7 +580,27 @@ export function App() {
                         Bias tensors use one feature index.
                       </p>
                     </div>
-                  )}
+                  ) : null}
+                  <div
+                    className="diagnostic-view"
+                    hidden={tab !== "diagnostics"}
+                  >
+                    <Diagnostics
+                      key={model.spec.id}
+                      model={model}
+                      history={history}
+                      onNeuron={(id, index) => {
+                        selectNode(id, index);
+                        setFocusAuditNeuron(true);
+                        setTab("architecture");
+                      }}
+                      onCase={(values) => {
+                        setInputs(values);
+                        setFocusAuditNeuron(false);
+                        setTab("architecture");
+                      }}
+                    />
+                  </div>
                 </div>
                 <div className="canvas-footer">
                   <span>
@@ -613,8 +647,8 @@ export function App() {
                         <input
                           aria-label={`Input ${index}`}
                           type="range"
-                          min="-2"
-                          max="2"
+                          min={Math.min(-2, value)}
+                          max={Math.max(2, value)}
                           step="0.01"
                           value={value}
                           onChange={(event) =>
@@ -626,8 +660,8 @@ export function App() {
                           }
                         />
                         <div className="range-labels">
-                          <span>−2</span>
-                          <span>2</span>
+                          <span>{number(Math.min(-2, value))}</span>
+                          <span>{number(Math.max(2, value))}</span>
                         </div>
                       </label>
                     ))}
