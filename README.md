@@ -90,6 +90,8 @@ For dense scenes, the **Connections** control offers:
 
 - **Overview:** every neuron, with up to 96 evenly distributed strings per transition.
   The counter states exactly how many connections are shown; this is a view filter.
+- **All connections:** every neuron and every string across the entire network—57,728
+  connections in Dense sixteen. Selection and forward-pass replay remain available.
 - **Layer pair:** all connections between two adjacent layers, including all 4,096
   strings between 64-neuron layers. The camera frames that pair.
 - **Selected neuron:** every incoming and outgoing string for the chosen neuron.
@@ -99,8 +101,9 @@ For dense scenes, the **Connections** control offers:
 
 ![Dense sixteen with all 4,096 strings in one hidden-layer pair](docs/images/dense-layer-pair.png)
 
-Dense scenes use instanced neurons, batched curves, and a 30-frame-per-second animation
-ceiling. The graph remains free of text and numbers. The contract still allows width 256
+Dense scenes use instanced neurons and batched curves, with animation capped at 30 fps
+(15 fps in the full-network view). The graph remains free of text and numbers.
+The contract still allows width 256
 and one million parameters, but this bundled 64-wide study is the current large example.
 General import, bounded tensor APIs, and broader hardware/memory profiling remain future work.
 

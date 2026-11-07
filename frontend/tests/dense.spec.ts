@@ -24,6 +24,122 @@ async function clickNode(page: Page, name: string) {
   );
 }
 
+test("all connections renders the full network and retains inspection and replay", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openDense(page);
+  const output = await page.locator(".output-values strong").innerText();
+  await page.getByLabel("Connection detail").selectOption("all");
+  await expect(page.getByTestId("connection-summary")).toContainText(
+    "Showing 57,728 of 57,728 connections. Every neuron and connection is shown.",
+  );
+  await expect
+    .poll(
+      () =>
+        page
+          .locator(".three-viewport")
+          .getAttribute("data-rendered-connections"),
+      { timeout: 10_000 },
+    )
+    .toBe("57728");
+  expect(
+    Number(
+      await page.locator(".three-viewport").getAttribute("data-draw-calls"),
+    ),
+  ).toBeLessThan(24);
+  await expect(
+    page.getByRole("button", { name: "Select input neuron 0", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Select layer16 neuron 0", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".neuron-target")).toHaveCount(966);
+
+  await page
+    .getByRole("navigation", { name: "Architecture tree" })
+    .getByRole("button", { name: "layer16 dense", exact: true })
+    .click();
+  await page.locator(".inspector-breakdown summary").click();
+  await page
+    .getByRole("button", {
+      name: "Inspect incoming connection 17",
+      exact: true,
+    })
+    .click();
+  await expect(page.locator(".inspector-selection h3")).toHaveText(
+    "layer15[17] → layer16[0]",
+  );
+  await expect(page.getByLabel("Weight", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Connection detail")).toHaveValue("all");
+  await expect(page.getByTestId("connection-summary")).toContainText(
+    "Showing 57,728 of 57,728",
+  );
+  await page.getByRole("button", { name: "Run & trace", exact: true }).click();
+  await expect(page.getByLabel("Propagation progress")).toBeEnabled();
+  await page.getByLabel("Propagation progress").fill("16");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Forward pass complete" }),
+  ).toBeVisible();
+  await expect(page.locator(".output-values strong")).toHaveText(output);
+  await page.screenshot({
+    path: ".local/dense-all-connections.png",
+    fullPage: true,
+  });
+
+  // Reduced motion keeps camera interaction live while idle frames are skipped.
+  const inputNode = page.getByRole("button", {
+    name: "Select input neuron 0",
+    exact: true,
+  });
+  const width = await inputNode.evaluate((node) =>
+    parseFloat(node.style.width),
+  );
+  await page.locator(".three-viewport canvas").scrollIntoViewIfNeeded();
+  const canvas = (await page.locator(".three-viewport canvas").boundingBox())!;
+  await page.mouse.move(
+    canvas.x + canvas.width / 2,
+    canvas.y + canvas.height / 2,
+  );
+  await page.mouse.wheel(0, -200);
+  await expect
+    .poll(() => inputNode.evaluate((node) => parseFloat(node.style.width)))
+    .toBeGreaterThan(width * 1.05);
+  await page.getByRole("button", { name: "Reset camera", exact: true }).click();
+
+  // Full-network strings still move when reduced motion is off.
+  const selectedString = page.locator(".edge-target");
+  const frozen = (await selectedString.boundingBox())!;
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect
+    .poll(async () => {
+      const moving = (await selectedString.boundingBox())!;
+      return Math.hypot(moving.x - frozen.x, moving.y - frozen.y);
+    })
+    .toBeGreaterThan(0.05);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  await page.getByLabel("Connection detail").selectOption("overview");
+  await expect
+    .poll(async () =>
+      Number(
+        await page
+          .locator(".three-viewport")
+          .getAttribute("data-rendered-connections"),
+      ),
+    )
+    .toBeLessThan(1600);
+  await page.getByLabel("Connection detail").selectOption("layer");
+  await page.getByLabel("Layer pair", { exact: true }).selectOption("8");
+  await expect
+    .poll(() =>
+      page.locator(".three-viewport").getAttribute("data-rendered-connections"),
+    )
+    .toBe("4096");
+  expect(errors).toEqual([]);
+});
+
 test("dense overview, full layer pairs and neuron focus remain bounded and selectable", async ({
   page,
 }) => {

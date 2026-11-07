@@ -26,6 +26,7 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
 - Inward arrows mark input neurons and outward arrows mark outputs.
 - Dense visualization: 966 neurons, 57,728 computed connections, sampled overview,
   complete adjacent-layer pairs (4,096 strings), and full neuron neighborhoods.
+  An optional All connections view draws every one of the 57,728 strings simultaneously.
   Instanced neurons and batched curves bound draw calls. Layer/index navigation, exact
   displayed-connection counts and camera framing support inspection at this scale.
 - Compact selection inspectors: connections show source activation, one weight editor,

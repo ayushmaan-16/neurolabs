@@ -1,7 +1,7 @@
 import type { Parameters } from "./api";
 import type { GraphStage } from "./graph-scene";
 
-export type GraphDetail = "overview" | "layer" | "neuron";
+export type GraphDetail = "overview" | "all" | "layer" | "neuron";
 export type GraphConnection = {
   layer: number;
   row: number;
@@ -51,6 +51,7 @@ export function graphConnections(
           selection.index[1] === source;
         const show =
           !dense ||
+          detail === "all" ||
           (detail === "overview" && overview.has(target * width + source)) ||
           (detail === "layer" && layer === focusLayer) ||
           (detail === "neuron" &&

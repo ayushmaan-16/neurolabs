@@ -91,9 +91,10 @@ export function Network3D({
     stages.findIndex((stage) => stage.id === selected),
   );
   // Small scenes only recolor their existing objects when selection changes.
-  const detailSelection = dense
-    ? JSON.stringify([selectedLayer, neuron, selectionKind, selection])
-    : "";
+  const detailSelection =
+    dense && detail !== "all"
+      ? JSON.stringify([selectedLayer, neuron, selectionKind, selection])
+      : "";
   const connections = useMemo(
     () =>
       parameters
@@ -300,6 +301,7 @@ export function Network3D({
                 }
               >
                 <option value="overview">Overview · sampled strings</option>
+                <option value="all">All connections</option>
                 <option value="layer">Layer pair · all strings</option>
                 <option value="neuron">Selected neuron · all strings</option>
               </select>
@@ -370,11 +372,13 @@ export function Network3D({
           <p data-testid="connection-summary">
             Showing {connections.length.toLocaleString()} of{" "}
             {totalConnections.toLocaleString()} connections.
-            {detail === "overview"
-              ? " Every neuron is shown. Focus a layer pair or neuron for all its strings."
-              : detail === "neuron"
-                ? " Click a neuron to follow every incoming and outgoing connection."
-                : " Every connection in this pair is shown. Select a neuron for a clearer view."}
+            {detail === "all"
+              ? " Every neuron and connection is shown."
+              : detail === "overview"
+                ? " Every neuron is shown. Focus a layer pair or neuron for all its strings."
+                : detail === "neuron"
+                  ? " Click a neuron to follow every incoming and outgoing connection."
+                  : " Every connection in this pair is shown. Select a neuron for a clearer view."}
           </p>
         </div>
       )}

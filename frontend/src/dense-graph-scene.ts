@@ -39,9 +39,14 @@ export function createDenseGraphScene({
   const scene = new THREE.Scene();
   let viewportWidth = mount.clientWidth,
     viewportHeight = mount.clientHeight;
+  let viewDirty = true;
   const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 2000);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
+  const invalidateView = () => {
+    viewDirty = true;
+  };
+  controls.addEventListener("change", invalidateView);
   controls.minDistance = 2;
   controls.maxDistance = 900;
   scene.add(new THREE.AmbientLight(0xd7dff0, 1.5));
@@ -63,6 +68,7 @@ export function createDenseGraphScene({
   });
   const relevantLayer = (layer: number) =>
     detail === "overview" ||
+    detail === "all" ||
     (detail === "layer"
       ? layer === focusLayer || layer === focusLayer - 1
       : Math.abs(layer - selectedLayer) <= 1);
@@ -101,7 +107,7 @@ export function createDenseGraphScene({
   });
   scene.add(neurons);
 
-  const segments = 12;
+  const segments = detail === "all" ? 8 : 12;
   const positions = new Float32Array(connections.length * segments * 6);
   const colors = new Float32Array(positions.length);
   const edgeGeometry = new THREE.BufferGeometry();
@@ -178,9 +184,10 @@ export function createDenseGraphScene({
       );
     controls.update();
   };
-  const reset = () => fit(detail !== "overview");
+  const reset = () => fit(detail === "layer" || detail === "neuron");
   let initial = true;
   const resize = new ResizeObserver(() => {
+    viewDirty = true;
     viewportWidth = mount.clientWidth;
     viewportHeight = mount.clientHeight;
     renderer.setSize(viewportWidth, viewportHeight);
@@ -289,12 +296,24 @@ export function createDenseGraphScene({
     color = new THREE.Color();
   const started = performance.now();
   let lastFrame = -Infinity;
+  let paintedState: GraphState | null = null;
   renderer.setAnimationLoop((now) => {
     // Bound CPU geometry/DOM work independently of display refresh rate.
-    if (now - lastFrame < 1000 / 30) return;
+    if (now - lastFrame < 1000 / (detail === "all" ? 15 : 30)) return;
     lastFrame = now;
-    controls.update();
+    const cameraChanged = controls.update();
     const current = state();
+    // A stationary reduced-motion view needs no repeated GPU submissions.
+    // Camera interaction, resize, selection, captures and replay still redraw it.
+    if (
+      reducedMotion.matches &&
+      !cameraChanged &&
+      !viewDirty &&
+      current === paintedState
+    )
+      return;
+    paintedState = current;
+    viewDirty = false;
     const values = stages.map(
       (stage) =>
         (current.trace ?? current.run)?.activations[stage.output]?.[0] ?? [],
@@ -363,9 +382,11 @@ export function createDenseGraphScene({
           ? 1.6
           : !reached || contribution === 0
             ? 0.12
-            : detail === "layer"
-              ? 0.32
-              : 0.6,
+            : detail === "all"
+              ? 0.2
+              : detail === "layer"
+                ? 0.32
+                : 0.6,
       );
       previous.copy(curve.v0);
       for (let segment = 0; segment < segments; segment++) {
@@ -393,8 +414,10 @@ export function createDenseGraphScene({
         curve.getPoint(current.progress - edge.layer + 1, point);
         particles.setMatrixAt(particleCount++, matrix.makeTranslation(point));
       }
-      curve.getPoint(0.46, point);
-      syncTarget(point, 0.18, edge.key);
+      if (targets.has(edge.key)) {
+        curve.getPoint(0.46, point);
+        syncTarget(point, 0.18, edge.key);
+      }
     });
     positionAttribute.needsUpdate = true;
     colorAttribute.needsUpdate = true;
@@ -418,9 +441,12 @@ export function createDenseGraphScene({
       });
       renderer.setAnimationLoop(null);
       resize.disconnect();
+      controls.removeEventListener("change", invalidateView);
       controls.dispose();
       renderer.domElement.removeEventListener("pointerdown", pointerDown);
       renderer.domElement.removeEventListener("pointerup", pointerUp);
+      neurons.dispose();
+      particles.dispose();
       const geometries = new Set<THREE.BufferGeometry>(),
         materials = new Set<THREE.Material>();
       scene.traverse((object) => {

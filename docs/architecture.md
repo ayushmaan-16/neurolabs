@@ -73,11 +73,14 @@ Small scenes retain individual curve components. Dense scenes use one instanced 
 mesh, one batched LineSegments geometry and instanced replay particles. Overview samples
 at most 96 connections per transition while showing every neuron; layer-pair focus draws
 every edge in that pair, and neuron focus draws every incoming/outgoing edge. Filtering
-never changes runtime execution or captures. Selection remains tied to real tensor
+can be disabled with All connections, which draws every string and shows every neuron.
+That mode uses eight curve segments and a 15 fps animation ceiling to bound per-frame work.
+With reduced motion enabled, stationary dense scenes redraw only when state or the camera changes.
+Filtering never changes runtime execution or captures. Selection remains tied to real tensor
 coordinates; displayed counts make filtering explicit. Camera framing follows the view.
 Projected keyboard targets use cached viewport dimensions to avoid per-target layout
 flushes. Dense scenes cap animation at 30 fps and omit thousands of overlapping keyboard
-edge targets in overview/pair views; neuron focus and inspector/matrix controls provide
+edge targets in overview/full/pair views; neuron focus and inspector/matrix controls provide
 individual keyboard access. HTML matrices still render the selected bundled tensor whole.
 The bundled 16-layer/64-wide study exercises this path; maximum-width and broad hardware
 performance/memory gates remain open.
