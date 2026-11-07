@@ -80,10 +80,29 @@ selection remains available, and playback particles follow the same curved strin
 **Deep signal study** adds a five-layer example (`1 → 3 → 3 → 2 → 1`) with twenty
 weighted connections and nine biases. It is a hand-constructed Tanh network.
 
-The execution contract allows up to 16 dense layers, width 256 and one million parameters,
-but the current 3D view is designed for small examples. Large models require
-grouped layers, focused connections, bounded tensor slices and matrix views before import
-can be enabled; the execution limit is not a browser-rendering performance guarantee.
+**Dense sixteen** reaches the execution contract's depth limit: 4 inputs, fifteen
+64-neuron Tanh hidden layers, and a 2-neuron linear output. That is **16 dense layers**
+(17 neuron layers including input), **966 neurons**, **57,728 weights**, and **58,690
+parameters** including biases. Its seeded random parameters are reproducible; it has no
+trained task or accuracy claim. Every forward pass and response slice uses all weights.
+
+For dense scenes, the **Connections** control offers:
+
+- **Overview:** every neuron, with up to 96 evenly distributed strings per transition.
+  The counter states exactly how many connections are shown; this is a view filter.
+- **Layer pair:** all connections between two adjacent layers, including all 4,096
+  strings between 64-neuron layers. The camera frames that pair.
+- **Selected neuron:** every incoming and outgoing string for the chosen neuron.
+  Pick in 3D or use the layer/index selectors. Click a string to inspect/edit its weight;
+  click a neuron to inspect/edit its bias. Keyboard string targets are available in this
+  view; the matrix and incoming-contribution list also reach individual connections.
+
+![Dense sixteen with all 4,096 strings in one hidden-layer pair](docs/images/dense-layer-pair.png)
+
+Dense scenes use instanced neurons, batched curves, and a 30-frame-per-second animation
+ceiling. The graph remains free of text and numbers. The contract still allows width 256
+and one million parameters, but this bundled 64-wide study is the current large example.
+General import, bounded tensor APIs, and broader hardware/memory profiling remain future work.
 
 ## Verify
 

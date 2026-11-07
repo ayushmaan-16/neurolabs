@@ -1,8 +1,57 @@
-"""Small analytic fixtures. They are hand-constructed, not claimed to be trained."""
+"""Analytic fixtures and seeded visualization studies; none are trained models."""
 
 import torch
 
 from neurolabs.schema import Activation, Dense, ModelSpec, TensorSpec
+
+
+def dense_study() -> tuple[ModelSpec, dict[str, torch.Tensor], list[float]]:
+    """Use the 16-dense-layer contract limit without changing global RNG state."""
+    generator = torch.Generator().manual_seed(16064)
+    parameters = {}
+    operations = []
+    current, width = "input", 4
+    for index in range(16):
+        name = f"layer{index + 1:02}"
+        output_width = 64 if index < 15 else 2
+        parameters[f"{name}.weight"] = torch.randn(output_width, width, generator=generator) * (
+            1.25 / width**0.5
+        )
+        parameters[f"{name}.bias"] = torch.randn(output_width, generator=generator) * 0.05
+        operations.append(
+            Dense(
+                id=name,
+                input=current,
+                output=f"{name}.z",
+                weight=f"{name}.weight",
+                bias=f"{name}.bias",
+            )
+        )
+        current = f"{name}.z"
+        if index < 15:
+            operations.append(
+                Activation(kind="tanh", id=f"{name}.tanh", input=current, output=f"{name}.a")
+            )
+            current = f"{name}.a"
+        width = output_width
+    return (
+        ModelSpec(
+            id="dense16",
+            name="Dense sixteen",
+            description=(
+                "16 dense layers · 64 neurons in each of 15 hidden layers. "
+                "Seeded Tanh study, not a trained predictor."
+            ),
+            input_width=4,
+            output_name=current,
+            tensors=tuple(
+                TensorSpec(id=key, shape=tuple(value.shape)) for key, value in parameters.items()
+            ),
+            operations=tuple(operations),
+        ),
+        parameters,
+        [0.5, -0.25, 0.75, 0.1],
+    )
 
 
 def samples() -> list[tuple[ModelSpec, dict[str, torch.Tensor], list[float]]]:
@@ -141,4 +190,5 @@ def samples() -> list[tuple[ModelSpec, dict[str, torch.Tensor], list[float]]]:
             [0.0, 1.0],
         ),
         (deep, deep_parameters, [0.5]),
+        dense_study(),
     ]

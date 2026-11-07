@@ -4,7 +4,7 @@ import onnxruntime as ort
 import pytest
 import torch
 from neurolabs.runtime import execute
-from neurolabs.samples import samples
+from neurolabs.samples import dense_study, samples
 from neurolabs.schema import Activation, Dense, ModelSpec, TensorSpec
 from onnx import TensorProto, helper, numpy_helper
 
@@ -34,6 +34,34 @@ def test_deep_sample_matches_independent_numpy_composition():
             expected = np.tanh(expected)
     result = execute(spec, values, inputs.tolist(), "deep-fixture")
     np.testing.assert_allclose(result["outputs"], expected, atol=1e-6, rtol=1e-5)
+
+
+def test_dense_sixteen_captures_match_independent_numpy_and_seed_is_stable():
+    spec, values, default = dense_study()
+    dense = [op for op in spec.operations if isinstance(op, Dense)]
+    assert len(dense) == 16
+    assert [values[op.weight].shape[0] for op in dense] == [64] * 15 + [2]
+    assert sum(value.numel() for key, value in values.items() if key.endswith("weight")) == 57_728
+    assert sum(value.numel() for value in values.values()) == 58_690
+    for key, value in dense_study()[1].items():
+        assert torch.equal(values[key], value)
+    inputs = [default, [-1, 0, 0.5, 1], [0, 0, 0, 0]]
+    result = execute(
+        spec, values, inputs, "dense-study", tuple(op.output for op in spec.operations)
+    )
+    expected = np.array(inputs, dtype=np.float32)
+    for op in spec.operations:
+        if isinstance(op, Dense):
+            expected = expected @ values[op.weight].numpy().T + values[op.bias].numpy()
+        else:
+            expected = np.tanh(expected)
+        np.testing.assert_allclose(result["activations"][op.output], expected, atol=2e-6, rtol=2e-5)
+    assert np.isfinite(result["outputs"]).all()
+    assert not np.allclose(result["outputs"][0], result["outputs"][1])
+    changed = dict(values)
+    changed["layer16.bias"] = values["layer16.bias"] + 0.5
+    edited = execute(spec, changed, inputs, "edited")
+    np.testing.assert_allclose(np.array(edited["outputs"]) - result["outputs"], 0.5, atol=1e-6)
 
 
 @pytest.mark.parametrize("activation", ["relu", "tanh", "sigmoid", "softmax", "identity"])

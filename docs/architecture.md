@@ -69,7 +69,18 @@ Reduced-motion preferences freeze string motion without changing model behavior.
 Transparent keyboard controls follow actual node/curve bounds; pointer selection raycasts
 the same visible geometry. No text textures, label placement or collision system is needed.
 The architecture tree and parameter controls provide additional keyboard access.
-The preview uses HTML cells for tiny sample matrices; large-scene rendering remains unverified.
+Small scenes retain individual curve components. Dense scenes use one instanced neuron
+mesh, one batched LineSegments geometry and instanced replay particles. Overview samples
+at most 96 connections per transition while showing every neuron; layer-pair focus draws
+every edge in that pair, and neuron focus draws every incoming/outgoing edge. Filtering
+never changes runtime execution or captures. Selection remains tied to real tensor
+coordinates; displayed counts make filtering explicit. Camera framing follows the view.
+Projected keyboard targets use cached viewport dimensions to avoid per-target layout
+flushes. Dense scenes cap animation at 30 fps and omit thousands of overlapping keyboard
+edge targets in overview/pair views; neuron focus and inspector/matrix controls provide
+individual keyboard access. HTML matrices still render the selected bundled tensor whole.
+The bundled 16-layer/64-wide study exercises this path; maximum-width and broad hardware
+performance/memory gates remain open.
 
 Run & trace performs a new backend forward pass and replays its captured values. Playback
 supports pause, stepping, scrubbing, and speed changes. Nodes encode signed activation;

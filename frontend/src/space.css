@@ -1,5 +1,72 @@
 /* Observatory: near-black surfaces and restrained instrument labels. */
-/* Labels are WebGL children of graph objects. DOM controls only provide keyboard access. */
+/* DOM targets provide keyboard access; the scene itself contains no text. */
+.layer-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+.layer-list button {
+  flex-shrink: 0;
+}
+.canvas-content:has(.dense-network) {
+  height: 780px;
+}
+.graph-detail-controls {
+  flex-shrink: 0;
+  padding: 14px 16px;
+  border-bottom: 1px solid #242734;
+  background: #080a11;
+}
+.graph-density-summary,
+.graph-detail-selects {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+.graph-density-summary {
+  font-size: 11px;
+  color: #8d95a9;
+  margin-bottom: 12px;
+}
+.graph-density-summary strong {
+  color: #c1cdec;
+  font-weight: 500;
+}
+.graph-detail-selects label {
+  display: grid;
+  gap: 5px;
+  font-size: 10px;
+  color: #929eb7;
+}
+.graph-detail-selects select {
+  min-width: 0;
+  max-width: 100%;
+  background: #0d101a;
+  border: 1px solid #333c51;
+  border-radius: 3px;
+  padding: 7px 9px;
+  color: #c1cdec;
+  font-size: 11px;
+}
+.graph-detail-controls p {
+  font-size: 10px;
+  color: #8d95a9;
+  margin: 11px 0 0;
+}
+.dense-network .three-viewport {
+  min-height: 370px;
+}
+@media (max-width: 650px) {
+  .canvas-content:has(.dense-network) {
+    height: 900px;
+  }
+  .graph-detail-selects {
+    align-items: stretch;
+  }
+  .graph-detail-selects label {
+    max-width: 100%;
+  }
+}
 .graph-hit-targets {
   position: absolute;
   inset: 0;

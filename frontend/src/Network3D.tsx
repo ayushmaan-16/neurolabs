@@ -5,6 +5,8 @@ import {
   type GraphStage,
 } from "./graph-scene";
 import { api, type Model, type Parameters, type Run } from "./api";
+import { createDenseGraphScene } from "./dense-graph-scene";
+import { graphConnections, type GraphDetail } from "./graph-detail";
 
 export function Network3D({
   model,
@@ -39,6 +41,9 @@ export function Network3D({
   const controller = useRef<AbortController | null>(null);
   const resetCamera = useRef<() => void>(() => {});
   const cameraState = useRef<CameraPose | null>(null);
+  const cameraView = useRef("");
+  const [detail, setDetail] = useState<GraphDetail>("overview");
+  const [focusLayer, setFocusLayer] = useState(1);
   const stages = useMemo(() => {
     const result: GraphStage[] = [
       {
@@ -74,24 +79,49 @@ export function Network3D({
     }
     return result;
   }, [model.spec]);
+  const totalNodes = stages.reduce((sum, stage) => sum + stage.width, 0);
+  const totalConnections = stages.reduce(
+    (sum, stage, layer) =>
+      sum + (layer ? stage.width * stages[layer - 1].width : 0),
+    0,
+  );
+  const dense = totalNodes > 128 || totalConnections > 2048;
+  const selectedLayer = Math.max(
+    0,
+    stages.findIndex((stage) => stage.id === selected),
+  );
+  // Small scenes only recolor their existing objects when selection changes.
+  const detailSelection = dense
+    ? JSON.stringify([selectedLayer, neuron, selectionKind, selection])
+    : "";
   const connections = useMemo(
     () =>
-      stages.flatMap((stage, layer) => {
-        if (!stage.weight || !parameters) return [];
-        const values = parameters.tensors[stage.weight].values as number[][];
-        return values.flatMap((row, target) =>
-          row.map((weight, source) => ({
-            layer,
-            row: target,
-            col: source,
-            weight,
-            tensorId: stage.weight!,
-            key: `edge:${layer}:${target}:${source}`,
-          })),
-        );
-      }),
-    [stages, parameters],
+      parameters
+        ? graphConnections(
+            stages,
+            parameters,
+            dense,
+            detail,
+            focusLayer,
+            selectedLayer,
+            neuron,
+            selectionKind,
+            selection,
+          )
+        : [],
+    [stages, parameters, dense, detail, focusLayer, detailSelection],
   );
+  const keyboardConnections =
+    connections.length <= 512
+      ? connections
+      : connections.filter(
+          (edge) =>
+            selectionKind === "edge" &&
+            edge.tensorId === selection.tensorId &&
+            edge.row === selection.index[0] &&
+            edge.col === selection.index[1],
+        );
+  const viewKey = `${detail}:${focusLayer}:${detail === "neuron" ? selectedLayer : ""}`;
   const live = useRef({
     trace,
     run,
@@ -177,17 +207,26 @@ export function Network3D({
   useEffect(() => {
     if (!host.current || !parameters) return;
     try {
-      const graph = createGraphScene({
+      const common = {
         mount: host.current,
         stages,
-        parameters,
         state: () => live.current,
         targets: hitTargets.current,
-        pose: cameraState.current,
-        savePose: (pose) => {
+        pose: cameraView.current === viewKey ? cameraState.current : null,
+        savePose: (pose: CameraPose) => {
           cameraState.current = pose;
         },
-      });
+      };
+      const graph = dense
+        ? createDenseGraphScene({
+            ...common,
+            connections,
+            detail,
+            focusLayer,
+            selectedLayer,
+          })
+        : createGraphScene({ ...common, parameters });
+      cameraView.current = viewKey;
       setWebglError(false);
       resetCamera.current = graph.reset;
       return () => {
@@ -197,12 +236,12 @@ export function Network3D({
     } catch {
       setWebglError(true);
     }
-  }, [stages, parameters]);
+  }, [stages, parameters, dense, connections, viewKey]);
 
   const finished = !!trace && progress >= stages.length - 1;
   const stageIndex = Math.min(stages.length - 1, Math.floor(progress));
   return (
-    <div className="network-3d">
+    <div className={`network-3d ${dense ? "dense-network" : ""}`}>
       <div className="trace-controls">
         <button
           className="trace-start"
@@ -242,6 +281,103 @@ export function Network3D({
         </label>
         <button onClick={() => resetCamera.current()}>Reset camera</button>
       </div>
+      {dense && (
+        <div className="graph-detail-controls">
+          <div className="graph-density-summary">
+            <strong>{totalNodes.toLocaleString()} neurons</strong>
+            <span>
+              {totalConnections.toLocaleString()} connections computed
+            </span>
+          </div>
+          <div className="graph-detail-selects">
+            <label>
+              Connections
+              <select
+                aria-label="Connection detail"
+                value={detail}
+                onChange={(event) =>
+                  setDetail(event.target.value as GraphDetail)
+                }
+              >
+                <option value="overview">Overview · sampled strings</option>
+                <option value="layer">Layer pair · all strings</option>
+                <option value="neuron">Selected neuron · all strings</option>
+              </select>
+            </label>
+            {detail === "layer" && (
+              <label>
+                Layer pair
+                <select
+                  aria-label="Layer pair"
+                  value={focusLayer}
+                  onChange={(event) =>
+                    setFocusLayer(Number(event.target.value))
+                  }
+                >
+                  {stages.slice(1).map((stage, index) => (
+                    <option key={stage.id} value={index + 1}>
+                      {index === 0 ? "Input" : `Layer ${index}`} → Layer{" "}
+                      {index + 1} · {stages[index].width} × {stage.width}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {detail === "neuron" && (
+              <>
+                <label>
+                  Neuron layer
+                  <select
+                    aria-label="Neuron layer"
+                    value={selectedLayer}
+                    onChange={(event) =>
+                      onSelect(stages[Number(event.target.value)].id, 0)
+                    }
+                  >
+                    {stages.map((stage, index) => (
+                      <option key={stage.id} value={index}>
+                        {index === 0 ? "Input" : `Layer ${index}`} ·{" "}
+                        {stage.width} neurons
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Neuron index
+                  <select
+                    aria-label="Neuron index"
+                    value={neuron}
+                    onChange={(event) =>
+                      onSelect(
+                        stages[selectedLayer].id,
+                        Number(event.target.value),
+                      )
+                    }
+                  >
+                    {Array.from(
+                      { length: stages[selectedLayer].width },
+                      (_, index) => (
+                        <option key={index} value={index}>
+                          {index}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+              </>
+            )}
+          </div>
+          <p data-testid="connection-summary">
+            Showing {connections.length.toLocaleString()} of{" "}
+            {totalConnections.toLocaleString()} connections.
+            {detail === "overview"
+              ? " Every neuron is shown. Focus a layer pair or neuron for all its strings."
+              : detail === "neuron"
+                ? " Click a neuron to follow every incoming and outgoing connection."
+                : " Every connection in this pair is shown. Select a neuron for a clearer view."}
+          </p>
+        </div>
+      )}
       <div className="three-viewport" ref={host}>
         <div className="graph-hit-targets">
           {stages.map((stage, layer) =>
@@ -256,6 +392,7 @@ export function Network3D({
                   className="neuron-target scene-proxy"
                   ref={(el) => {
                     if (el) hitTargets.current.set(`${layer}:${index}`, el);
+                    else hitTargets.current.delete(`${layer}:${index}`);
                   }}
                   aria-label={`Select ${stage.id} neuron ${index}`}
                   data-activation={reached ? value : "pending"}
@@ -267,12 +404,13 @@ export function Network3D({
               );
             }),
           )}
-          {connections.map((edge) => (
+          {keyboardConnections.map((edge) => (
             <button
               key={edge.key}
               className="edge-target scene-proxy"
               ref={(el) => {
                 if (el) hitTargets.current.set(edge.key, el);
+                else hitTargets.current.delete(edge.key);
               }}
               aria-label={`Select connection ${edge.tensorId} [${edge.row}, ${edge.col}]`}
               onClick={() =>

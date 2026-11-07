@@ -39,7 +39,7 @@ restart preserves the active head, duplicate edit requests are idempotent, confl
 concurrent edits have exactly one winner, invalid batches create no partial revision,
 and corrupted tensor files fail integrity checks.
 
-## Verification at this checkpoint
+## Verification at the initial checkpoint
 
 - 21 backend tests passed in the isolated project environment on Windows.
 - 3 Chromium browser tests passed: edit/run/reload/restore; coordinate selection,
@@ -48,6 +48,24 @@ and corrupted tensor files fail integrity checks.
 - TypeScript/production build, Ruff checks, and frontend formatting checks passed.
 - The default workspace screenshot was visually inspected.
 - Windows/Linux CI is configured; Linux execution has not been verified locally.
+
+## Dense visualization checkpoint
+
+The bundled `dense16` fixture reaches 16 dense layers: 4 inputs, fifteen 64-neuron
+Tanh hidden layers, and 2 linear outputs. It has 966 neurons, 57,728 connections and
+58,690 parameters. Seeded parameters remain distinct from trained-model claims.
+Every intermediate capture is checked against independent NumPy composition, including
+input sensitivity, repeatable initialization and the effect of a final-bias edit.
+
+Instanced neurons and batched curves replace per-object rendering for dense scenes.
+Overview shows every neuron with a disclosed sample of 1,536 strings; pair focus shows
+all 4,096 strings between hidden layers, and neuron focus shows complete incoming/outgoing
+connections. Regression checks bound draw calls below 24, exercise native node/edge
+picking, scalar editing, 16-layer replay, invalidation, model switching and narrow layout.
+Selection projection caches viewport dimensions to avoid per-target forced layout.
+
+This is one tested scale on the current Windows/Chromium environment. It does not close
+the maximum-width, GPU memory, frame-time or broad hardware performance gates.
 
 ## Remaining decisions gated by evidence
 

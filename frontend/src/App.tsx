@@ -441,7 +441,7 @@ export function App() {
               <div className="model-meta">
                 <span>
                   <Box size={13} />
-                  {totalParameters} parameters
+                  {totalParameters.toLocaleString()} parameters
                 </span>
                 <span>
                   <Layers3 size={13} />
@@ -647,7 +647,7 @@ export function App() {
                       <span>
                         Response across input
                         {inputs.length > 1
-                          ? ` · input 2 = ${number(inputs[1])}`
+                          ? ` · other inputs held at ${inputs.slice(1).map(number).join(", ")}`
                           : ""}
                       </span>
                       <div>
