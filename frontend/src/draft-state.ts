@@ -5,6 +5,7 @@ export type Draft = {
   base_revision: string;
   idempotency_key: string;
   changes: Change[];
+  name?: string;
 };
 export const draftStorageKey = "neurolabs.parameter-drafts.v1";
 export const cellKey = (change: Pick<Change, "tensor_id" | "index">) =>
@@ -24,6 +25,8 @@ export function readDrafts(): Record<string, Draft> {
             draft &&
             typeof draft.base_revision === "string" &&
             typeof draft.idempotency_key === "string" &&
+            (draft.name === undefined ||
+              (typeof draft.name === "string" && draft.name.length <= 80)) &&
             Array.isArray(draft.changes) &&
             draft.changes.length > 0 &&
             draft.changes.length <= 4096 &&

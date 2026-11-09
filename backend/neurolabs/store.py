@@ -53,8 +53,14 @@ class Store:
                     id TEXT PRIMARY KEY, revision_id TEXT NOT NULL REFERENCES revisions(id),
                     result TEXT NOT NULL, created_at TEXT NOT NULL
                 );
-                PRAGMA user_version = 1;
             """)
+            db.execute("BEGIN IMMEDIATE")
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(revisions)")}
+            if "name" not in columns:
+                db.execute("ALTER TABLE revisions ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+            db.execute("""UPDATE revisions SET name = CASE WHEN parent IS NULL THEN 'Original model'
+                ELSE 'Revision ' || substr(id, 1, 8) END WHERE name = ''""")
+            db.execute("PRAGMA user_version = 2")
 
     @contextmanager
     def connection(self):
@@ -102,8 +108,15 @@ class Store:
                 (spec.id, spec.model_dump_json(), revision, revision, canonical(default_input)),
             )
             db.execute(
-                "INSERT INTO revisions VALUES (?, ?, NULL, ?, '[]', ?)",
-                (revision, spec.id, canonical(blobs), datetime.now(UTC).isoformat()),
+                "INSERT INTO revisions (id, model_id, parent, tensors, changes, created_at, name) "
+                "VALUES (?, ?, NULL, ?, '[]', ?, ?)",
+                (
+                    revision,
+                    spec.id,
+                    canonical(blobs),
+                    datetime.now(UTC).isoformat(),
+                    "Original model",
+                ),
             )
 
     def models(self) -> list[dict]:
@@ -113,7 +126,14 @@ class Store:
 
     def model(self, model_id: str) -> dict:
         with self.connection() as db:
-            row = db.execute("SELECT * FROM models WHERE id=?", (model_id,)).fetchone()
+            row = db.execute(
+                """SELECT models.*, head_revision.name AS head_name,
+                original_revision.name AS original_name FROM models
+                JOIN revisions AS head_revision ON head_revision.id = models.head
+                JOIN revisions AS original_revision ON original_revision.id = models.original
+                WHERE models.id=?""",
+                (model_id,),
+            ).fetchone()
         if row is None:
             raise KeyError("Model not found")
         return {
@@ -121,6 +141,8 @@ class Store:
             "head": row["head"],
             "original": row["original"],
             "default_input": json.loads(row["default_input"]),
+            "head_name": row["head_name"],
+            "original_name": row["original_name"],
         }
 
     def revision(self, revision_id: str) -> dict:
@@ -142,7 +164,8 @@ class Store:
         }
 
     def edit(self, model_id: str, request: EditRequest) -> dict:
-        fingerprint = hashlib.sha256(canonical(request.model_dump()).encode()).hexdigest()
+        payload = request.model_dump() if request.name else request.model_dump(exclude={"name"})
+        fingerprint = hashlib.sha256(canonical(payload).encode()).hexdigest()
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             previous = db.execute(
@@ -165,7 +188,8 @@ class Store:
                 blobs[key] = self.write_tensor(parameters[key])
             revision_id = uuid.uuid4().hex
             db.execute(
-                "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO revisions (id, model_id, parent, tensors, changes, created_at, name) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     revision_id,
                     model_id,
@@ -173,6 +197,7 @@ class Store:
                     canonical(blobs),
                     canonical(changes),
                     datetime.now(UTC).isoformat(),
+                    request.name or f"Revision {revision_id[:8]}",
                 ),
             )
             db.execute("UPDATE models SET head=? WHERE id=?", (revision_id, model_id))

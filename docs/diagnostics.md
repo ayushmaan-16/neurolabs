@@ -52,9 +52,14 @@ Captum attribution, isolate a causal neuron, or explain why a prediction is corr
 5. Inspect a changed input, stage one or more parameter edits, and return to Diagnostics.
    The batch is retained; the outdated report is cleared. Re-run to measure the complete
    unsaved draft against the reference. The report explicitly labels its draft provenance.
-   Save revision commits the group once; Discard draft returns to the saved parameters.
+   Enter an optional revision name before saving. Save revision commits the group once;
+   Discard draft returns to the saved parameters. Saved names appear in the reference
+   selector with their IDs, so duplicate names remain distinguishable. Draft-name changes
+   invalidate the report too; re-run to export current metadata.
 6. Download the JSON report to retain exact inputs/outputs, full per-neuron statistics,
-   thresholds, input/spec/parameter SHA-256 fingerprints, revision IDs and runtime provenance.
+   thresholds, input/spec/parameter SHA-256 fingerprints, revision names/IDs and runtime
+   provenance. `revision_name` and `baseline_revision_name` describe the compared snapshots;
+   a draft additionally records its `draft_name` and saved `base_revision_name`.
 
 Generated probe sets are for exercising the UI and are explicitly labeled. They are not
 training data or evidence about a real model's deployment distribution. Reports are not

@@ -29,6 +29,7 @@ import { Network3D } from "./Network3D";
 import { Plot } from "./Plot";
 import { Inspector } from "./Inspector";
 import { Diagnostics } from "./Diagnostics";
+import { Weights } from "./Weights";
 import {
   type Draft,
   type Change,
@@ -101,20 +102,6 @@ export function App() {
       : null;
   const operation = model?.spec.operations.find((op) => op.id === selected);
   const parameter = currentParameters?.tensors[tensorId];
-  const originalParameter =
-    baseline && baseline.revision_id === model?.original
-      ? baseline.tensors[tensorId]
-      : undefined;
-  const matrix = parameter
-    ? parameter.shape.length === 1
-      ? [parameter.values as number[]]
-      : (parameter.values as number[][])
-    : [];
-  const originalMatrix = originalParameter
-    ? originalParameter.shape.length === 1
-      ? [originalParameter.values as number[]]
-      : (originalParameter.values as number[][])
-    : [];
   const totalParameters =
     model?.spec.tensors.reduce(
       (sum, t) => sum + t.shape.reduce((a, b) => a * b, 1),
@@ -318,6 +305,7 @@ export function App() {
           base_revision: draft?.base_revision ?? model.head,
           idempotency_key: crypto.randomUUID(),
           changes: next,
+          name: draft?.name ?? "",
         };
       else delete updated[activeId];
       return updated;
@@ -353,6 +341,7 @@ export function App() {
         base_revision: draft.base_revision,
         idempotency_key: draft.idempotency_key,
         changes,
+        name: draft.name?.trim() || undefined,
       });
       await refresh();
       setDrafts((all) => {
@@ -577,6 +566,12 @@ export function App() {
                 </span>
                 <span>
                   <GitBranch size={13} />
+                  <span
+                    className="revision-heading-name"
+                    title={model.head_name}
+                  >
+                    {model.head_name}
+                  </span>
                   {model.head.slice(0, 8)}
                 </span>
                 <span
@@ -607,6 +602,29 @@ export function App() {
                     </small>
                   </div>
                   <div className="draft-actions">
+                    <label className="revision-name-field">
+                      Revision name
+                      <input
+                        aria-label="Revision name"
+                        type="text"
+                        maxLength={80}
+                        value={draft.name ?? ""}
+                        placeholder="e.g. Fix hidden bias"
+                        disabled={busy}
+                        onChange={(event) => {
+                          const name = event.target.value;
+                          setDrafts((all) => ({
+                            ...all,
+                            [activeId]: {
+                              ...all[activeId],
+                              name,
+                              idempotency_key: crypto.randomUUID(),
+                            },
+                          }));
+                        }}
+                      />
+                      <small>Optional · up to 80 characters</small>
+                    </label>
                     <button
                       className="draft-save"
                       disabled={busy || staleDraft || unstaged}
@@ -718,61 +736,15 @@ export function App() {
                       }}
                     />
                   ) : tab === "weights" ? (
-                    <div className="matrix-view">
-                      <div className="section-label">
-                        PARAMETER MATRIX{" "}
-                        <code>[{parameter?.shape.join(" × ")}]</code>
-                      </div>
-                      <label className="sr-only" htmlFor="tensor-select">
-                        Tensor
-                      </label>
-                      <select
-                        id="tensor-select"
-                        value={tensorId}
-                        onChange={(event) =>
-                          selectParameter(
-                            event.target.value,
-                            model.spec.tensors
-                              .find((t) => t.id === event.target.value)!
-                              .shape.map(() => 0),
-                          )
-                        }
-                      >
-                        {model.spec.tensors.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.id}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="large-matrix">
-                        {matrix.map((row, r) => (
-                          <div className="matrix-row" key={r}>
-                            {row.map((value, c) => {
-                              const index =
-                                parameter!.shape.length === 1 ? [c] : [r, c];
-                              return (
-                                <button
-                                  key={c}
-                                  className={`${value < 0 ? "negative" : "positive"} ${coordinate.join() === index.join() ? "selected" : ""} ${originalMatrix[r]?.[c] !== value ? "changed" : ""}`}
-                                  onClick={() =>
-                                    selectParameter(tensorId, index)
-                                  }
-                                  aria-label={`${tensorId} [${index.join(", ")}] = ${value}`}
-                                >
-                                  <small>[{index.join(", ")}]</small>
-                                  <strong>{number(value)}</strong>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                      <p>
-                        Rows = output features · columns = input features
-                        <br />
-                        Bias tensors use one feature index.
-                      </p>
-                    </div>
+                    <Weights
+                      model={model}
+                      parameters={currentParameters}
+                      baseline={baseline}
+                      tensorId={tensorId}
+                      coordinate={coordinate}
+                      changes={changes}
+                      onSelect={selectParameter}
+                    />
                   ) : null}
                   <div
                     className="diagnostic-view"
@@ -783,6 +755,7 @@ export function App() {
                       model={model}
                       history={history}
                       changes={changes}
+                      draftName={draft?.name ?? ""}
                       blocked={staleDraft}
                       onNeuron={(id, index) => {
                         selectNode(id, index);
@@ -804,7 +777,11 @@ export function App() {
                     Negative
                   </span>
                   <span>
-                    Nodes: activations · edges: signed weighted contributions
+                    {tab === "architecture"
+                      ? "Nodes: activations · edges: signed weighted contributions"
+                      : tab === "weights"
+                        ? "Cells: parameter values · colors: sign"
+                        : "Batch statistics and revision comparison"}
                   </span>
                 </div>
               </section>

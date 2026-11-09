@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { test, expect, type Page } from "@playwright/test";
 
 async function history(page: Page) {
@@ -18,6 +19,9 @@ test("multiple edits preview, survive refresh and save as exactly one revision",
   await expect(page.locator(".output-values strong")).toHaveText("0.3");
   const before = await history(page);
   await stageBias(page, "2");
+  await page
+    .getByLabel("Revision name", { exact: true })
+    .fill("Repair hidden response");
   await expect(page.locator(".output-values strong")).toHaveText("1.1");
   await page
     .getByRole("navigation", { name: "Architecture tree" })
@@ -58,6 +62,9 @@ test("multiple edits preview, survive refresh and save as exactly one revision",
   );
   expect((await history(page)).length).toBe(before.length);
   await page.reload();
+  await expect(page.getByLabel("Revision name", { exact: true })).toHaveValue(
+    "Repair hidden response",
+  );
   await expect(
     page.getByText("2 staged parameter changes", { exact: true }),
   ).toBeVisible();
@@ -72,6 +79,34 @@ test("multiple edits preview, survive refresh and save as exactly one revision",
   const after = await history(page);
   expect(after.length).toBe(before.length + 1);
   expect(after[0].changes).toHaveLength(2);
+  expect(after[0].name).toBe("Repair hidden response");
+  await expect(page.locator(".revision-heading-name")).toHaveText(
+    "Repair hidden response",
+  );
+  await page.getByRole("button", { name: "Diagnostics", exact: true }).click();
+  const compare = page.getByLabel("Compare current revision with", {
+    exact: true,
+  });
+  await expect(
+    compare.locator("option", { hasText: "Repair hidden response" }),
+  ).toHaveCount(1);
+  await compare.selectOption(after[0].id);
+  await page
+    .getByRole("button", { name: "Analyze batch", exact: true })
+    .click();
+  await expect(page.locator(".audit-provenance")).toContainText(
+    "baseline Repair hidden response",
+  );
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Download report", exact: true })
+    .click();
+  const report = JSON.parse(
+    await readFile((await (await download).path())!, "utf8"),
+  );
+  expect(report.revision_name).toBe("Repair hidden response");
+  expect(report.baseline_revision_name).toBe("Repair hidden response");
+  await page.screenshot({ path: ".local/named-revision.png", fullPage: true });
   await page
     .getByRole("button", { name: "Restore original", exact: true })
     .click();

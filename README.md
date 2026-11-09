@@ -48,7 +48,9 @@ environment variable remain supported, so the rename preserves saved revisions.
 2. Change input `x₀` and inspect the output and response plot.
 3. Click the connection, change its weight to `1` in the inspector, and press **Stage**.
 4. Compare the current curve with the dashed original curve.
-5. Stage other related edits, then click **Save revision** once to commit the group.
+5. Stage other related edits, enter a **Revision name**, then click **Save revision**
+   once to commit the group. Names are optional (up to 80 characters); blank names receive
+   a default. History, Diagnostics comparisons and JSON reports use the same saved name/ID.
 6. Restore the original checkpoint, or select a previous revision in history.
 7. Reload the browser: saved revisions persist, and unsaved drafts recover in the same tab.
 
@@ -56,6 +58,17 @@ The other fixtures demonstrate a piecewise-linear ReLU curve and XOR classificat
 They are analytic examples, not trained-model performance claims. XOR outputs are logits.
 
 ## Explore the 3D neuron graph
+
+The **Weights** tab shows stored parameters. For a weight matrix, row `r` is the
+destination neuron and column `c` is the source neuron in the preceding layer:
+`W[r,c]` multiplies that source's activation. A `[64 × 64]` tensor contains 4,096
+connection weights. A bias vector shows one value per destination neuron, added after
+its weighted input sum. These parameters do not change merely because the input changes.
+Readable cells scroll in both directions with fixed row/column headers. Select a cell
+or jump to a zero-based coordinate to edit it in the Inspector. **Full precision**
+shows decimals that round-trip to the stored float32 values; compact display is rounded.
+Colors indicate sign, a gold dot marks differences from the original model, and dashed
+borders identify staged edits.
 
 Choose an input, then click **Run & trace**. Drag to rotate, scroll to zoom, and right-drag
 to pan. Use Pause, Step layer, or the timeline to inspect propagation. Click a neuron

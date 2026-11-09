@@ -2,7 +2,14 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 
 class Contract(BaseModel):
@@ -11,6 +18,13 @@ class Contract(BaseModel):
 
 Identifier = Annotated[str, Field(pattern=r"^[a-zA-Z][a-zA-Z0-9_.-]{0,63}$")]
 Width = Annotated[int, Field(strict=True, ge=1, le=256)]
+RevisionName = Annotated[
+    str, StringConstraints(min_length=1, max_length=80, pattern=r"^[^\x00-\x1f\x7f]+$")
+]
+OptionalRevisionName = Annotated[
+    RevisionName | None,
+    BeforeValidator(lambda value: (value.strip() or None) if isinstance(value, str) else value),
+]
 
 
 class TensorSpec(Contract):
@@ -104,6 +118,7 @@ class EditRequest(Contract):
     base_revision: str = Field(min_length=1, max_length=64)
     idempotency_key: str = Field(min_length=1, max_length=100)
     changes: tuple[CellEdit, ...] = Field(min_length=1, max_length=4096)
+    name: OptionalRevisionName = None
 
 
 class RunRequest(Contract):
@@ -126,6 +141,7 @@ class DiagnosticRequest(Contract):
         min_length=2, max_length=256
     )
     changes: tuple[CellEdit, ...] = Field(default=(), max_length=4096)
+    draft_name: OptionalRevisionName = None
 
 
 class DraftPreviewRequest(Contract):

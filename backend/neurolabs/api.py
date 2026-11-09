@@ -167,7 +167,18 @@ def create_app(root: Path | None = None) -> FastAPI:
             request.baseline_revision_id,
         )
         if changes:
-            report.update(draft_base_revision_id=request.revision_id, draft_changes=changes)
+            report.update(
+                draft_base_revision_id=request.revision_id,
+                draft_changes=changes,
+                draft_name=request.draft_name,
+            )
+        report["revision_name"] = (
+            request.draft_name or "Unsaved draft"
+            if changes
+            else store.revision(request.revision_id)["name"]
+        )
+        report["baseline_revision_name"] = store.revision(request.baseline_revision_id)["name"]
+        report["base_revision_name"] = store.revision(request.revision_id)["name"]
         return report
 
     @app.post("/api/v1/models/{model_id}/draft-preview")

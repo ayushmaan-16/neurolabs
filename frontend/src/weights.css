@@ -1,0 +1,250 @@
+.canvas-content:has(.tensor-view) {
+  height: auto;
+}
+.matrix-view.tensor-view {
+  padding: 20px;
+  max-width: none;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+.tensor-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.tensor-heading h3 {
+  margin: 8px 0 16px;
+  font-size: 18px;
+}
+.tensor-heading code {
+  color: #a6b6d6;
+  font-size: 12px;
+}
+.tensor-view #tensor-select {
+  max-width: 100%;
+  width: 320px;
+}
+.tensor-controls {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0;
+}
+.tensor-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #9caac4;
+  font-size: 11px;
+}
+.tensor-controls input[type="number"] {
+  width: 100px;
+  padding: 8px;
+  border: 1px solid #353e53;
+  border-radius: 3px;
+  background: #0b0e17;
+  color: #c2ceeb;
+}
+.tensor-controls button {
+  padding: 8px 12px;
+  border: 1px solid #414b64;
+  border-radius: 3px;
+  background: #151b2b;
+  font-size: 12px;
+}
+.tensor-controls .tensor-precision {
+  flex-direction: row;
+  align-items: center;
+  align-self: center;
+}
+.tensor-precision input {
+  accent-color: #bdcbea;
+}
+.tensor-selection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.tensor-selection span {
+  width: 100%;
+  color: #8595af;
+  font-size: 11px;
+}
+.tensor-scroll {
+  max-height: 440px;
+  max-width: 100%;
+  width: 100%;
+  overflow: auto;
+  position: relative;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border: 1px solid #2b3244;
+  border-radius: 4px;
+}
+.tensor-table {
+  width: max-content;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: monospace;
+  font-size: 11px;
+}
+.tensor-table th,
+.tensor-table td {
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+  padding: 3px;
+  border: 0;
+  box-sizing: border-box;
+}
+.tensor-exact .tensor-table th,
+.tensor-exact .tensor-table td {
+  width: 184px;
+  min-width: 184px;
+  max-width: 184px;
+}
+.tensor-table th {
+  height: 38px;
+  color: #9aaac6;
+  font-weight: 400;
+  background: #10131e;
+  text-align: center;
+}
+.tensor-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.tensor-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+.tensor-table tr > th:first-child {
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+}
+.tensor-table thead .tensor-corner {
+  left: 0;
+  z-index: 4;
+}
+.tensor-corner span {
+  display: block;
+  font-size: 10px;
+}
+.tensor-cell {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 44px;
+  padding: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 12px monospace;
+  border: 1px solid #303e5a;
+  border-radius: 3px;
+  background: #151d2e;
+  color: #bfceee;
+}
+.tensor-cell.negative {
+  background: #2a211f;
+  border-color: #554139;
+  color: #dfbaa9;
+}
+.tensor-cell.staged {
+  border-style: dashed;
+  border-width: 2px;
+}
+.tensor-cell.selected {
+  outline: 2px solid #d8e4ff;
+  outline-offset: -2px;
+}
+.tensor-cell.changed::after,
+.tensor-changed-dot {
+  width: 5px;
+  height: 5px;
+  background: #d6af67;
+  border-radius: 50%;
+}
+.tensor-cell.changed::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+.tensor-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-top: 12px;
+  color: #8b9bb5;
+  font-size: 10px;
+}
+.tensor-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tensor-changed-dot {
+  display: inline-block;
+}
+.draft-actions {
+  align-items: end;
+}
+.revision-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  max-width: 100%;
+}
+.revision-name-field input {
+  width: 240px;
+  max-width: 100%;
+  padding: 8px 10px;
+  background: #0b0e17;
+  color: #d0dbf2;
+  border: 1px solid #414b64;
+  border-radius: 3px;
+}
+.revision-heading-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.revision-list button > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.revision-list strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.revision-list small {
+  display: block;
+  margin: 4px 0;
+  color: #8591aa;
+  font-size: 10px;
+}
+@media (max-width: 650px) {
+  .matrix-view.tensor-view {
+    padding: 12px;
+  }
+  .revision-name-field {
+    width: 100%;
+  }
+  .revision-name-field input {
+    width: 100%;
+  }
+}

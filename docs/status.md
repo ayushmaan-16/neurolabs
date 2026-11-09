@@ -13,6 +13,11 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
 - Per-model parameter drafts: stage multiple edits with live preview/diagnostics, review
   or undo changes, discard, and save the entire group as one revision. Same-tab reload
   recovery, stale-head protection and saved/draft provenance keep experiments distinct.
+- Optional revision names persist with saved snapshots and recovered drafts, and are shared
+  across history, the current checkpoint, Diagnostics selectors and downloadable reports.
+  Existing databases migrate without changing revision IDs or tensor artifacts.
+- Readable weight/bias tables with fixed-width cells, sticky source/destination headers,
+  contained two-axis scrolling, coordinate navigation and optional float32 precision.
 - Local FastAPI routes, session/origin guards, persistent run results, OpenAPI docs.
 - React overview, operation selection, parameter grid/editor, computation breakdown,
   live inputs, response slices, original comparison, and revision history.
@@ -52,7 +57,7 @@ recorded in [roadmap.md](roadmap.md); these have not been implemented.
   against independently constructed graphs; they do not establish importer coverage.
 - Bounded worker process, resource caps, cancellation and crash recovery.
 - Wider hardware/memory profiling, maximum-width stress benchmarks and semantic zoom.
-- Simulated disk-full/interrupted-write recovery and database schema migrations.
+- Simulated disk-full/interrupted-write recovery and broader database migration coverage.
 - Typed generated frontend client; current preview types are handwritten.
 
 ## Deliberate preview limits

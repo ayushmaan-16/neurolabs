@@ -17,6 +17,8 @@ export type Audit = {
   model_id: string;
   revision_id: string;
   baseline_revision_id: string;
+  revision_name?: string;
+  baseline_revision_name?: string;
   input_hash: string;
   sample_count: number;
   scope: string;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type Model, type Revision } from "./api";
+import { api, revisionName, type Model, type Revision } from "./api";
 import { type Audit, metric, parseBatch, probeBatch } from "./audit-data";
 import type { Change } from "./draft-state";
 
@@ -10,6 +10,7 @@ export function Diagnostics({
   onCase,
   changes,
   blocked = false,
+  draftName = "",
 }: {
   model: Model;
   history: Revision[];
@@ -17,6 +18,7 @@ export function Diagnostics({
   onCase: (inputs: number[]) => void;
   changes: Change[];
   blocked?: boolean;
+  draftName?: string;
 }) {
   const [draft, setDraft] = useState(() => probeBatch(model));
   const [source, setSource] = useState("Generated probe set");
@@ -29,6 +31,7 @@ export function Diagnostics({
     baseline,
     draft,
     changesKey,
+    draftName,
     blocked,
   ]);
   const [layerId, setLayerId] = useState("");
@@ -42,7 +45,7 @@ export function Diagnostics({
     setPending(false);
     setReport(null);
     setError("");
-  }, [model.head, baseline, draft, changesKey, blocked]);
+  }, [model.head, baseline, draft, changesKey, blocked, draftName]);
   useEffect(
     () => () => {
       controller.current?.abort();
@@ -84,6 +87,7 @@ export function Diagnostics({
           baseline_revision_id: baseline,
           inputs,
           changes,
+          draft_name: draftName.trim() || undefined,
         },
         abort.signal,
       );
@@ -196,8 +200,7 @@ export function Diagnostics({
           >
             {baselines.map((id) => (
               <option key={id} value={id}>
-                {id === model.original ? "Original" : "Revision"} ·{" "}
-                {id.slice(0, 8)}
+                {revisionName(id, model, history)} · {id.slice(0, 8)}
                 {id === model.head ? " · current" : ""}
               </option>
             ))}
@@ -431,9 +434,10 @@ export function Diagnostics({
           </div>
           <p className="audit-provenance">
             {changes.length
-              ? `Unsaved draft of ${model.head.slice(0, 8)}`
-              : `Current ${current.revision_id.slice(0, 8)}`}{" "}
-            · baseline {current.baseline_revision_id.slice(0, 8)} · input hash{" "}
+              ? `Unsaved draft of ${model.head.slice(0, 8)} · ${current.revision_name}`
+              : `Current ${current.revision_name} · ${current.revision_id.slice(0, 8)}`}{" "}
+            · baseline {current.baseline_revision_name} ·{" "}
+            {current.baseline_revision_id.slice(0, 8)} · input hash{" "}
             {current.input_hash.slice(0, 12)}. Export includes the full batch,
             per-neuron statistics, revision IDs and runtime provenance.
           </p>

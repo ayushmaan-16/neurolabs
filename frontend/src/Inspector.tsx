@@ -306,11 +306,13 @@ export function Inspector({
                 >
                   <span className="revision-mark" />
                   <span>
-                    <strong>
-                      {revision.parent
-                        ? `${revision.changes.length} parameter edit${revision.changes.length > 1 ? "s" : ""}`
-                        : "Original model"}
-                    </strong>
+                    <strong>{revision.name}</strong>
+                    {revision.parent && (
+                      <small>
+                        {revision.changes.length} parameter edit
+                        {revision.changes.length > 1 ? "s" : ""}
+                      </small>
+                    )}
                     <code>{revision.id.slice(0, 8)}</code>
                   </span>
                   {model.head === revision.id ? (

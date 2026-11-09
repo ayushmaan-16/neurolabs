@@ -21,6 +21,8 @@ export type Model = {
   head: string;
   original: string;
   default_input: number[];
+  head_name: string;
+  original_name: string;
 };
 export type Parameters = {
   revision_id: string;
@@ -28,10 +30,26 @@ export type Parameters = {
 };
 export type Revision = {
   id: string;
+  name: string;
   parent: string | null;
   created_at: string;
   changes: { tensor_id: string; index: number[]; old: number; value: number }[];
 };
+
+export function revisionName(
+  id: string,
+  model: Model,
+  history: Revision[],
+): string {
+  return (
+    (id === model.original
+      ? model.original_name
+      : id === model.head
+        ? model.head_name
+        : history.find((revision) => revision.id === id)?.name) ||
+    `Revision ${id.slice(0, 8)}`
+  );
+}
 export type Run = {
   id: string;
   revision_id: string;

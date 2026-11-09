@@ -55,6 +55,13 @@ concurrent saved-head change preserves but blocks the stale draft rather than re
 Preview/diagnostic results identify the unsaved draft and its base; saved snapshots remain
 unchanged. Draft forward-pass replay uses the actual captured preview values.
 
+Saved revisions carry a durable display name, optional on submission and limited to 80
+characters after trimming. Blank names receive `Revision <short ID>`; original checkpoints
+are named `Original model`. Names do not replace IDs or need to be unique. History, current
+head metadata, Diagnostics selectors and reports resolve the same stored names. Draft names
+recover with their changes and appear in draft reports. Schema version 2 adds this column
+without changing existing IDs, artifacts or idempotency retries from unnamed clients.
+
 The API is versioned under `/api/v1`. Loopback binding, Host/Origin validation, and a
 per-launch credential protect browser requests. This is a single-user application,
 not a public upload service. Local processes can access the session endpoint intentionally.
@@ -92,6 +99,10 @@ Projected keyboard targets use cached viewport dimensions to avoid per-target la
 flushes. Dense scenes cap animation at 30 fps and omit thousands of overlapping keyboard
 edge targets in overview/full/pair views; neuron focus and inspector/matrix controls provide
 individual keyboard access. HTML matrices still render the selected bundled tensor whole.
+The Weights tab fixes cell widths inside a scroll region, keeps source-column/destination-row
+headers visible, and provides coordinate navigation. Biases form a vertical single-column
+vector. Compact rounded values, float32 round-trip text, staged markers and original-value
+differences share the Inspector's tensor coordinates and draft values.
 The bundled 16-layer/64-wide study exercises this path; maximum-width and broad hardware
 performance/memory gates remain open.
 
