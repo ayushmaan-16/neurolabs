@@ -3,7 +3,10 @@
 from pathlib import Path
 
 import torch
+from neurolabs.onnx_import import make_onnx_example
 from neurolabs.packages import export_sequential
+from neurolabs.samples import samples
+from onnx import TensorProto, helper
 
 torch.set_num_threads(1)
 torch.manual_seed(73)
@@ -32,3 +35,16 @@ export_sequential(
     example_inputs=[[0.0] * 256],
 )
 print("Created small (43 parameters) and large (987,137 parameters) test packages.")
+curve_spec, curve_values, _ = next(item for item in samples() if item[0].id == "curve")
+(destination / "import-curve.onnx").write_bytes(make_onnx_example(curve_spec, curve_values))
+unsupported = helper.make_model(
+    helper.make_graph(
+        [helper.make_node("LeakyRelu", ["x"], ["y"])],
+        "unsupported",
+        [helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 1])],
+        [helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 1])],
+    ),
+    opset_imports=[helper.make_opsetid("", 18)],
+    ir_version=10,
+)
+(destination / "import-unsupported.onnx").write_bytes(unsupported.SerializeToString())

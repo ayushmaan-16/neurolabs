@@ -573,7 +573,10 @@ export function App() {
                       <summary>
                         Original import ·{" "}
                         {model.import_info.verification.status === "passed"
-                          ? "supplied examples verified"
+                          ? model.import_info.verification.method ===
+                            "onnxruntime_probes"
+                            ? "ONNX Runtime probes verified"
+                            : "supplied examples verified"
                           : "no verification examples"}
                       </summary>
                       <p>{model.import_info.metadata.input_note}</p>

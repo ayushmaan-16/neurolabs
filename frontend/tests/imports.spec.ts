@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 test.describe.configure({ timeout: 90_000 });
 test.beforeAll(() => {
@@ -202,7 +203,7 @@ test("invalid uploads report the reason and leave the collection unchanged", asy
     buffer: Buffer.from("not a package"),
   });
   await expect(page.getByRole("alert")).toContainText(
-    "Choose a neuroLabs .zip package",
+    "Choose an .onnx model or a neuroLabs .zip package",
   );
   await page.getByLabel("Model package", { exact: true }).setInputFiles({
     name: "broken.zip",
@@ -220,4 +221,143 @@ test("invalid uploads report the reason and leave the collection unchanged", asy
   );
   await page.getByRole("button", { name: "Close import", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
+});
+
+test("drop ONNX, detect architecture, name it and use the persistent model", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Import model", exact: true }).click();
+  const transfer = await page.evaluateHandle(
+    (bytes) => {
+      const data = new DataTransfer();
+      data.items.add(
+        new File([new Uint8Array(bytes)], "curve.onnx", {
+          type: "application/octet-stream",
+        }),
+      );
+      return data;
+    },
+    [...readFileSync(".local/import-curve.onnx")],
+  );
+  await page
+    .getByRole("region", { name: "Model file drop zone" })
+    .dispatchEvent("drop", { dataTransfer: transfer });
+  const preview = page.getByRole("region", {
+    name: "Model compatibility preview",
+  });
+  await expect(preview).toContainText(
+    "ONNX Runtime verification passed on 6 generated probes",
+    { timeout: 40_000 },
+  );
+  await expect(preview).toContainText("architecture detected automatically");
+  await page
+    .getByLabel("Model name", { exact: true })
+    .fill("ONNX browser curve");
+  await page
+    .getByLabel("Model task", { exact: true })
+    .selectOption("regression");
+  await page.screenshot({
+    path: ".local/onnx-import-preview.png",
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Import into workspace", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "ONNX browser curve", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".import-context summary")).toContainText(
+    "ONNX Runtime probes verified",
+  );
+  await page.getByLabel("Input vector · 1 values", { exact: true }).fill("0.5");
+  await page.getByRole("button", { name: "Apply input", exact: true }).click();
+  await expect(page.locator(".output-values strong")).toHaveText("0.3");
+  await page.getByRole("button", { name: "Run & trace", exact: true }).click();
+  // Reduced-motion mode intentionally captures without starting animation.
+  await page.getByRole("button", { name: "Step layer", exact: true }).click();
+  await page.getByRole("button", { name: "Step layer", exact: true }).click();
+  await expect(
+    page.getByText("Forward pass complete", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: ".local/onnx-imported-graph.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Diagnostics", exact: true }).click();
+  await page.getByLabel("Input batch", { exact: false }).fill("-1\n0.5\n1");
+  await page
+    .getByRole("button", { name: "Analyze batch", exact: true })
+    .click();
+  await expect(
+    page.getByText("3 inputs analyzed", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: /^ONNX browser curve/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "ONNX browser curve", exact: true }),
+  ).toBeVisible();
+});
+
+test("unsupported ONNX and multiple dropped files explain incompatibility", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const before = await (await page.request.get("/api/v1/models")).json();
+  await page.getByRole("button", { name: "Import model", exact: true }).click();
+  await page
+    .getByLabel("Model package", { exact: true })
+    .setInputFiles(".local/import-unsupported.onnx");
+  await expect(page.getByRole("alert")).toContainText(
+    "Unsupported ONNX operation LeakyRelu",
+    { timeout: 40_000 },
+  );
+  await expect(
+    page.getByRole("button", { name: "Import into workspace", exact: true }),
+  ).toHaveCount(0);
+  const transfer = await page.evaluateHandle(() => {
+    const data = new DataTransfer();
+    for (const name of ["a.onnx", "b.onnx"])
+      data.items.add(new File(["x"], name));
+    return data;
+  });
+  await page
+    .getByRole("region", { name: "Model file drop zone" })
+    .dispatchEvent("drop", { dataTransfer: transfer });
+  await expect(page.getByRole("alert")).toContainText(
+    "Drop one .onnx model or .zip package at a time",
+  );
+  expect((await (await page.request.get("/api/v1/models")).json()).length).toBe(
+    before.length,
+  );
+  await page.getByRole("button", { name: "Close import", exact: true }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+});
+
+test("a compatibility check can be closed without trapping the dialog", async ({
+  page,
+}) => {
+  let heldRoute: import("@playwright/test").Route | undefined;
+  await page.route("**/api/v1/imports/preview?*", (route) => {
+    heldRoute = route;
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Import model", exact: true }).click();
+  await page
+    .getByLabel("Model package", { exact: true })
+    .setInputFiles(".local/import-curve.onnx");
+  await expect(page.getByRole("dialog").getByRole("status")).toHaveText(
+    "Checking model…",
+  );
+  await expect.poll(() => Boolean(heldRoute)).toBe(true);
+  await page.getByRole("button", { name: "Close import", exact: true }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await heldRoute!.abort();
+  await page.getByRole("button", { name: "Import model", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("status")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Model compatibility preview" }),
+  ).toHaveCount(0);
 });

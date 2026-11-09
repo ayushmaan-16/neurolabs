@@ -50,6 +50,10 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
 - Native ZIP import/export with a Python Sequential exporter, compatibility preview,
   fixed-tolerance example verification, default-run checks and durable imported metadata.
   The example downloader and [import guide](model-import.md) explain the full workflow.
+- Direct ONNX import for constrained dense chains (`Gemm` / `MatMul + Add`), supported
+  activations and embedded float32 weights. Architecture detection, six-probe ONNX Runtime
+  parity, source fingerprints, model naming/task selection and an ONNX example downloader.
+  ZIP and ONNX both support drag-and-drop. Checking can be closed without trapping the dialog.
 - Package parsing/verification subprocess: one at a time, 30-second timeout, 6 MiB upload
   and per-entry bounds, four expiring previews. No uploaded Python is executed.
 - Bounded binary parameter snapshots, 64 × 64 JSON slices and matrix blocks for wide models.
@@ -59,8 +63,9 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
 Deferred intervention/evaluation and proposed training visualization/control milestones are
 recorded in [roadmap.md](roadmap.md); these have not been implemented.
 
-- Bidirectional ONNX normalization/import/export. Current ONNX tests compare execution
-  against independently constructed graphs; they do not establish importer coverage.
+- ONNX saved-revision export and broader graph normalization. Import tests cover supported
+  operator forms, rejection cases, framework exports, API persistence and browser workflows;
+  this is not general ONNX architecture support.
 - General execution worker, OS memory caps, cancellation and crash recovery (the short-lived
   import-validation worker and its deadline are implemented).
 - Wider hardware/memory profiling, maximum-width stress benchmarks and semantic zoom.
@@ -69,8 +74,8 @@ recorded in [roadmap.md](roadmap.md); these have not been implemented.
 
 ## Deliberate preview limits
 
-The browser exposes samples and native packages for supported dense networks. ONNX, agent,
-training, gradient tools and arbitrary architectures are not implemented. History lists at
+The browser exposes samples, native packages and constrained ONNX imports for dense networks.
+Agent, training, gradient tools and arbitrary architectures are not implemented. History lists at
 most 100 recent revisions. Full-network string rendering is capped at 100,000 connections.
 Restoration works through history; a dedicated undo/redo toolbar is not implemented.
 Runs are synchronous and slider requests are debounced; browser abort prevents stale display

@@ -14,10 +14,12 @@ dependencies = [
   "torch>=2.6,<3",
   "safetensors>=0.5,<1",
   "numpy>=2,<3",
+  "onnx>=1.21,<2",
+  "onnxruntime>=1.20,<2",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8,<10", "httpx>=0.28,<1", "ruff>=0.11,<1", "onnx>=1.21,<2", "onnxruntime>=1.20,<2"]
+dev = ["pytest>=8,<10", "httpx>=0.28,<1", "ruff>=0.11,<1", "onnxscript>=0.5,<1"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["backend/neurolabs"]

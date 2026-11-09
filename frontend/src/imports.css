@@ -60,6 +60,48 @@
   max-width: 100%;
   font-size: 12px;
 }
+.import-dropzone {
+  padding: 18px;
+  border: 1px dashed #53627f;
+  background: #0e121c;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+}
+.import-dropzone > span {
+  color: #96a7c3;
+}
+.import-dropzone.dragging {
+  border-color: #c2cfeb;
+  background: #192338;
+}
+.import-dropzone[aria-disabled="true"] {
+  opacity: 0.6;
+}
+.import-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.import-options label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  flex: 1 1 200px;
+}
+.import-options input,
+.import-options select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px;
+  background: #111522;
+  color: #c3cfe9;
+  border: 1px solid #354058;
+  border-radius: 3px;
+  font: inherit;
+}
 .import-help {
   display: flex;
   flex-wrap: wrap;
@@ -131,6 +173,14 @@
   overflow-wrap: anywhere;
   font: 10px monospace;
   color: #8191aa;
+}
+.import-provenance {
+  font-size: 11px;
+  color: #8191aa;
+}
+.import-provenance summary {
+  cursor: pointer;
+  margin: 12px 0;
 }
 .import-confirm {
   display: block;

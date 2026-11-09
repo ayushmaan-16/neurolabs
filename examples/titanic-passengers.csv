@@ -1,0 +1,9 @@
+PassengerId,Pclass,Name,Sex,Age,SibSp,Parch,Fare,Embarked
+1,3,"Example, Mr. Alex",male,22,1,0,7.25,S
+2,1,"Example, Mrs. Blair",female,38,1,0,71.2833,C
+3,3,"Example, Miss. Casey",female,26,0,0,7.925,S
+4,1,"Example, Mr. Drew",male,54,0,0,51.8625,S
+5,2,"Example, Master. Evan",male,5,1,1,26,S
+6,2,"Example, Mrs. Frankie",female,40,0,1,26,S
+7,3,"Example, Mr. Gray",male,,0,0,8.4583,Q
+8,1,"Example, Dr. Harper",female,30,0,0,,

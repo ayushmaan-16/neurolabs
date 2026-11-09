@@ -48,6 +48,14 @@ environment variable remain supported, so the rename preserves saved revisions.
 [Python exporter](docs/model-import.md), review compatibility, then import it into the
 workspace. Supported dense models share the graph, weights, diagnostics and revision
 workflow. **Export saved revision** downloads the selected checkpoint as a reusable ZIP.
+For a complete pretrained-model exercise, follow the
+[Titanic upload walkthrough](docs/titanic-upload-walkthrough.md).
+
+**Direct ONNX upload:** drop a supported `.onnx` file into **Import model**. neuroLabs
+detects its architecture, verifies generated probes against ONNX Runtime, and lets you
+name the model and declare its task before importing. No model-specific ZIP converter
+is needed. **Download ONNX example** supplies a ready-to-upload analytic model. See the
+[ONNX upload/export guide](docs/model-import.md#upload-an-onnx-model) for supported graphs.
 
 1. Select **The linear map**, whose original behavior is `f(x) = 0.5x`.
 2. Change input `x₀` and inspect the output and response plot.
@@ -142,7 +150,7 @@ and one million parameters, but this bundled 64-wide study is the current large 
 Native ZIP import/export and bounded binary/slice parameter APIs are implemented.
 Matrices use 64 × 64 blocks for wider tensors. All-connections rendering is capped at
 100,000 connections; larger models use layer-pair/neuron inspection. Broader hardware
-and memory profiling, ONNX import/export and general cancellable jobs remain future work.
+and memory profiling, ONNX saved-revision export and general cancellable jobs remain future work.
 
 ## Verify
 

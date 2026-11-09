@@ -134,6 +134,14 @@ class CheckoutRequest(Contract):
     revision_id: str = Field(min_length=1, max_length=64)
 
 
+class ImportCommitRequest(Contract):
+    name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+        | None
+    ) = None
+    task: Literal["unknown", "regression", "classification"] | None = None
+
+
 class DiagnosticRequest(Contract):
     revision_id: str = Field(min_length=1, max_length=64)
     baseline_revision_id: str = Field(min_length=1, max_length=64)

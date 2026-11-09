@@ -25,6 +25,9 @@ export type Model = {
   original_name: string;
   import_info?: {
     package_sha256: string;
+    source_format?: "zip" | "onnx";
+    source_sha256?: string;
+    source_filename?: string | null;
     metadata: {
       feature_names: string[];
       output_names: string[];
@@ -34,6 +37,8 @@ export type Model = {
       status: string;
       sample_count: number;
       max_abs_error: number | null;
+      method?: "supplied_examples" | "onnxruntime_probes";
+      reference?: string;
     };
   } | null;
 };
@@ -96,12 +101,15 @@ export async function uploadPackage(
   file: File,
   signal: AbortSignal,
 ): Promise<ImportPreview> {
-  const response = await fetch("/api/v1/imports/preview", {
+  const format = file.name.toLowerCase().endsWith(".onnx") ? "onnx" : "zip";
+  const query = new URLSearchParams({ format, filename: file.name });
+  const response = await fetch(`/api/v1/imports/preview?${query}`, {
     method: "POST",
     body: file,
     signal,
     headers: {
-      "Content-Type": "application/zip",
+      "Content-Type":
+        format === "zip" ? "application/zip" : "application/octet-stream",
       "X-NeuroLabs-Session": await sessionToken(),
     },
   });
@@ -124,6 +132,8 @@ export type ImportPreview = {
   };
   parameter_count: number;
   sha256: string;
+  source_format: "zip" | "onnx";
+  source_sha256?: string;
   verification: NonNullable<Model["import_info"]>["verification"];
 };
 

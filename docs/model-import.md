@@ -1,15 +1,89 @@
 # Import and export a dense model
 
-neuroLabs accepts a native ZIP package containing architecture JSON and float32
-safetensors. Browser ONNX, `.py`, `.pt`, `.pth`, Keras and arbitrary architecture imports
-are not implemented. The Python exporter accepts a caller-owned exact `torch.nn.Sequential`.
+neuroLabs accepts **self-contained ONNX models** and native ZIP packages containing
+architecture JSON and float32 safetensors. Both use the same preview, model collection,
+3D graph, parameter editing, diagnostics and saved revisions. Direct `.py`, `.pt`, `.pth`,
+Keras and arbitrary architecture imports are not implemented.
+
+## Upload an ONNX model
+
+1. Click **Import model**. Drop one `.onnx` file onto the drop area, or use the file selector.
+2. Review the detected dense layers, activations, input/output widths and parameter count.
+3. Check that **ONNX Runtime verification passed**. The converter compares neuroLabs with
+   the uploaded ONNX graph on six generated probe inputs, at fixed tolerances `rtol=1e-4`,
+   `atol=1e-5`. This checks the conversion on those probes, not prediction accuracy or
+   equivalence with the original training code on all possible inputs.
+4. Choose a **Model name**. Set **Model task** if you know it; otherwise leave **Not specified**.
+   Class labels, feature names and preprocessing are not inferred from weights/graph shape.
+5. Click **Import into workspace**. Nothing is saved by preview alone.
+6. The default input is a zero vector. Supply your original, correctly preprocessed features
+   through **Input vector**, or load a numeric batch in **Diagnostics**.
+
+For a quick test, **Download ONNX example** provides the analytic rectified curve as a
+single `.onnx` file. Import it and try input `0.5`; the original output is approximately `0.3`.
+The ZIP example remains available too. A successful import adds a separate persistent model.
+
+Supported ONNX graphs have one float32 input and one float32 output, shaped
+`[batch, features]`. Input width is static, 1-256; batch is dynamic or fixed at 1. The
+imported row-independent MLP also supports the application's input batches. Limits are
+1-16 dense layers, widths up to 256, at most 1,000,000 parameters, and a 6 MiB source file.
+
+- Dense layers: `Gemm` (`alpha=beta=1`, `transA=0`, `transB=0/1`), or `MatMul` optionally
+  followed by a constant-bias `Add`. Weights are normalized to `[destination, source]`.
+- Activations: one ReLU, Tanh or Sigmoid per dense layer; final feature-axis Softmax.
+  Identity operations are removed without changing the math. Constant weight transposes
+  and tensor-valued Constant nodes are supported.
+- Parameters: embedded, finite float32 matrices/vectors. Biases use `[outputs]` or
+  `[1, outputs]`. Shared parameters, dynamic weights, unused parameter subgraphs,
+  external weight files, sparse tensors, local functions, custom operators, branches,
+  loops, convolution, attention, dropout and batch normalization are rejected explicitly.
+- Standard ONNX opsets from 13 through the installed ONNX library's supported version;
+  the installed ONNX Runtime must support the file's IR/opset too. **Opset 18** is the
+  recommended tested export target. At most 128 ONNX nodes and 64 initializers are accepted.
+
+The source graph is validated against this operator subset before ONNX Runtime runs it,
+inside the existing 30-second validation subprocess. External tensor references are
+rejected before the ONNX checker or any tensor reader can inspect filesystem paths.
+Source-file and normalized-package SHA-256 fingerprints persist with the original
+verification result. All saved-revision exports currently use the native ZIP format.
+
+Closing the import dialog during checking aborts the browser request and prevents a late
+result from appearing in a reopened dialog. The bounded worker may finish in the background;
+a new check can report busy until that job exits. Import commit is a separate short operation.
+
+## Export a PyTorch model to ONNX
+
+If you already have an ONNX file, upload it directly. Otherwise, in the environment where
+your trained model is loaded, install the export dependencies (`onnx` and `onnxscript`) and run:
+
+```python
+import torch
+
+# model is your trained model instance, with its checkpoint already loaded.
+input_features = 12  # replace with your actual model input width
+model.eval().cpu()
+torch.onnx.export(
+    model,
+    (torch.zeros(1, input_features),),
+    "model.onnx",
+    dynamo=True,
+    opset_version=18,
+    external_data=False,  # embed weights in this one file
+    input_names=["features"],
+    output_names=["outputs"],
+)
+```
+
+Exporting does not train the model. Run it with the architecture and trained weights
+already loaded; do not substitute a newly initialized model. Only supported exported
+operations can be imported, even if a framework can export a more complicated model.
 
 ## Try it without preparing a model
 
 1. Click **Import model** in the model collection.
 2. Click **Download example package**. This contains the analytic rectified curve,
    not a trained predictor or a dataset download.
-3. Select that ZIP using **Model package**.
+3. Select or drop that ZIP using the model file control.
 4. Review the layers, shapes, parameter count and output-verification result.
 5. Click **Import into workspace**. Preview alone does not save a model.
 6. Enter a numeric input vector, click **Apply input**, inspect the graph or Weights,
@@ -68,6 +142,11 @@ be silently removed during this conversion.
 four **standardized** Iris measurements. Its model card describes the training split and
 normalization; that scaler is not embedded in the weights. This example exports normalized
 probe inputs for numerical checks, not an accuracy evaluation on Iris flowers.
+
+For a different pretrained example with its scaler supplied, follow the
+[Titanic upload walkthrough](titanic-upload-walkthrough.md). It covers downloading a
+pinned Hugging Face checkpoint, preparing passenger inputs, creating the native ZIP,
+uploading it yourself, and comparing a deliberate parameter edit across a batch.
 
 ## Supported model contract
 
@@ -134,9 +213,12 @@ memory profiling and a general cancellable execution worker remain later gates.
 
 ## API
 
-- `POST /api/v1/imports/preview`: raw ZIP body, returns a compatibility preview and token.
-- `POST /api/v1/imports/{token}`: commit the checked package as a new model.
+- `POST /api/v1/imports/preview`: raw ZIP body; add `?format=onnx&filename=model.onnx`
+  for a raw ONNX body. Returns a compatibility preview and token. No multipart parser.
+- `POST /api/v1/imports/{token}`: commit the checked model. Optional JSON `name` (1-120
+  trimmed characters) and `task` (`unknown`, `classification`, `regression`) override display metadata.
 - `GET /api/v1/import-example`: downloadable example ZIP.
+- `GET /api/v1/import-example.onnx`: downloadable single-file ONNX example.
 - `GET /api/v1/models/{model}/revisions/{revision}/export`: saved checkpoint ZIP.
 - `GET /api/v1/models/{model}/revisions/{revision}/parameter-data`: bounded binary snapshot.
 - `GET /api/v1/models/{model}/revisions/{revision}/tensors/{tensor}`: bounded JSON slice;

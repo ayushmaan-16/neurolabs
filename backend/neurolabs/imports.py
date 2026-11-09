@@ -1,5 +1,6 @@
 """Bounded package preview lifecycle. Import only commits after explicit UI selection."""
 
+import base64
 import json
 import os
 import secrets
@@ -22,14 +23,16 @@ class ImportPreviews:
         self.lock = threading.Lock()
         self.items = OrderedDict()
 
-    def inspect(self, data: bytes):
+    def inspect(self, data: bytes, source_format="zip", filename="model.onnx"):
+        if source_format not in ("zip", "onnx"):
+            raise ValueError("Choose an ONNX model or a neuroLabs ZIP package")
         if len(data) > MAX_PACKAGE_BYTES:
             raise ValueError("Model packages must be at most 6 MiB")
         if not self.slots.acquire(blocking=False):
             raise ImportBusyError("Another model is being checked. Try again when it finishes.")
         try:
             process = subprocess.Popen(
-                [sys.executable, "-m", "neurolabs.package_worker"],
+                [sys.executable, "-m", "neurolabs.package_worker", source_format, filename[:255]],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -41,7 +44,7 @@ class ImportPreviews:
                 process.kill()
                 process.communicate()
                 raise ValueError("Model compatibility check exceeded its 30 second limit") from exc
-            if process.returncode or len(stdout) > 256 * 1024:
+            if process.returncode or len(stdout) > MAX_PACKAGE_BYTES * 2:
                 raise ValueError(
                     "Model compatibility worker could not complete. Try a smaller package."
                 )
@@ -49,6 +52,10 @@ class ImportPreviews:
             if "error" in message:
                 raise ValueError(message["error"])
             result = message["result"]
+            if source_format == "onnx":
+                data = base64.b64decode(message["package"], validate=True)
+                if len(data) > MAX_PACKAGE_BYTES:
+                    raise ValueError("Converted model exceeds the 6 MiB package limit")
             token = secrets.token_hex(16)
             result["token"] = token
             result["expires_in_seconds"] = 900

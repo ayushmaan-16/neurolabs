@@ -4,6 +4,7 @@ import hashlib
 import os
 import secrets
 from pathlib import Path
+from typing import Literal
 
 import torch
 from fastapi import FastAPI, Query, Request
@@ -23,6 +24,8 @@ from neurolabs.schema import (
     DiagnosticRequest,
     DraftPreviewRequest,
     EditRequest,
+    ImportCommitRequest,
+    ModelSpec,
     RunRequest,
 )
 from neurolabs.store import ConflictError, Store
@@ -123,6 +126,7 @@ def create_app(root: Path | None = None) -> FastAPI:
                 "restore",
                 "native-import",
                 "native-export",
+                "onnx-import",
             ],
         }
 
@@ -131,7 +135,11 @@ def create_app(root: Path | None = None) -> FastAPI:
         return JSONResponse({"token": session_token}, headers={"Cache-Control": "no-store"})
 
     @app.post("/api/v1/imports/preview")
-    async def import_preview(request: Request):
+    async def import_preview(
+        request: Request,
+        source_format: Literal["zip", "onnx"] = Query("zip", alias="format"),
+        filename: str = Query("model.onnx", max_length=255),
+    ):
         # Stream with a hard cap, including clients without Content-Length. No multipart parser.
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > MAX_PACKAGE_BYTES:
@@ -143,14 +151,22 @@ def create_app(root: Path | None = None) -> FastAPI:
                     {"error": {"message": "Model packages must be at most 6 MiB"}}, 413
                 )
             data.extend(chunk)
-        return await run_in_threadpool(previews.inspect, bytes(data))
+        return await run_in_threadpool(previews.inspect, bytes(data), source_format, filename)
 
     @app.post("/api/v1/imports/{token}", status_code=201)
-    def import_model(token: str):
+    def import_model(token: str, options: ImportCommitRequest | None = None):
+        options = options or ImportCommitRequest()
         data, result = previews.get(token)
         manifest, values, _ = read_package(data)
         # Server-assigned identity avoids overwriting samples or another uploaded model.
-        spec = manifest.spec.model_copy(update={"id": f"import-{token}"})
+        spec = ModelSpec.model_validate(
+            {
+                **manifest.spec.model_dump(),
+                "id": f"import-{token}",
+                "name": options.name or manifest.spec.name,
+                "task": options.task or manifest.spec.task,
+            }
+        )
         store.register(
             spec,
             values,
@@ -159,6 +175,9 @@ def create_app(root: Path | None = None) -> FastAPI:
                 "package_sha256": result["sha256"],
                 "metadata": manifest.metadata.model_dump(),
                 "verification": result["verification"],
+                "source_format": result.get("source_format", "zip"),
+                "source_sha256": result.get("source_sha256", result["sha256"]),
+                "source_filename": result.get("source_filename"),
             },
         )
         return store.model(spec.id)
@@ -174,6 +193,17 @@ def create_app(root: Path | None = None) -> FastAPI:
             make_package(manifest, values, examples),
             media_type="application/zip",
             headers={"Content-Disposition": 'attachment; filename="neurolabs-example.zip"'},
+        )
+
+    @app.get("/api/v1/import-example.onnx")
+    def import_onnx_example():
+        from neurolabs.onnx_import import make_onnx_example
+
+        spec, values, _ = next(item for item in samples() if item[0].id == "curve")
+        return Response(
+            make_onnx_example(spec, values),
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": 'attachment; filename="neurolabs-example.onnx"'},
         )
 
     @app.get("/api/v1/models")

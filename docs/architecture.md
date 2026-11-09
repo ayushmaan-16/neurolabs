@@ -32,11 +32,13 @@ object for every neuron. Version 1 bounds: 16 dense layers, width 256, 1 million
 batch 256, float32. ReLU, Tanh, Sigmoid, Identity, and final Softmax are supported.
 Shared parameters, cycles, unused tensors, and mismatched shapes are rejected.
 
-Native JSON/safetensors ZIP import/export is implemented; see [model-import.md](model-import.md).
-The next importer milestone adds ONNX opsets 17/18 for constrained Gemm / MatMul + Add chains.
-External ONNX data, custom operations,
-unresolved feature dimensions, and arbitrary broadcasting are excluded. Export emits a
-normalized model, not a byte-identical recreation.
+Native JSON/safetensors ZIP import/export and constrained ONNX import are implemented;
+see [model-import.md](model-import.md). ONNX Gemm / MatMul + Add chains are translated to
+the internal model and checked against ONNX Runtime on six generated probes. Standard
+opsets 13 through the installed ONNX version are accepted, subject to ONNX Runtime support;
+opset 18 is the tested export target. External data, local functions, custom operations,
+unresolved feature dimensions, shared parameters and arbitrary broadcasting are excluded.
+Saved-revision export currently emits native ZIP packages; ONNX export remains deferred.
 
 ## Storage and API
 
