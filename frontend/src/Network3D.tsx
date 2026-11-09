@@ -305,7 +305,10 @@ export function Network3D({
                 }
               >
                 <option value="overview">Overview · sampled strings</option>
-                <option value="all">All connections</option>
+                <option value="all" disabled={totalConnections > 100_000}>
+                  All connections
+                  {totalConnections > 100_000 ? " · limit 100,000" : ""}
+                </option>
                 <option value="layer">Layer pair · all strings</option>
                 <option value="neuron">Selected neuron · all strings</option>
               </select>
@@ -384,6 +387,12 @@ export function Network3D({
                   ? " Click a neuron to follow every incoming and outgoing connection."
                   : " Every connection in this pair is shown. Select a neuron for a clearer view."}
           </p>
+          {totalConnections > 100_000 && (
+            <p>
+              For this model, use a layer pair or neuron to inspect all its
+              connections. The complete network is always computed.
+            </p>
+          )}
         </div>
       )}
       <div className="three-viewport" ref={host}>

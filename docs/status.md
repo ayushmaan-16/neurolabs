@@ -46,7 +46,13 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
   saturation, per-layer/neuron statistics, matched-revision changes, largest-change inputs,
   graph inspection links and downloadable reports with provenance/fingerprints.
 - Python-only `analyze_sequential` bridge for an engineer's own supported float32 MLP;
-  browser model import remains unavailable. See [diagnostic workflows](diagnostics.md).
+  see [diagnostic workflows](diagnostics.md).
+- Native ZIP import/export with a Python Sequential exporter, compatibility preview,
+  fixed-tolerance example verification, default-run checks and durable imported metadata.
+  The example downloader and [import guide](model-import.md) explain the full workflow.
+- Package parsing/verification subprocess: one at a time, 30-second timeout, 6 MiB upload
+  and per-entry bounds, four expiring previews. No uploaded Python is executed.
+- Bounded binary parameter snapshots, 64 × 64 JSON slices and matrix blocks for wide models.
 
 ## Remaining feasibility gates
 
@@ -55,18 +61,19 @@ recorded in [roadmap.md](roadmap.md); these have not been implemented.
 
 - Bidirectional ONNX normalization/import/export. Current ONNX tests compare execution
   against independently constructed graphs; they do not establish importer coverage.
-- Bounded worker process, resource caps, cancellation and crash recovery.
+- General execution worker, OS memory caps, cancellation and crash recovery (the short-lived
+  import-validation worker and its deadline are implemented).
 - Wider hardware/memory profiling, maximum-width stress benchmarks and semantic zoom.
 - Simulated disk-full/interrupted-write recovery and broader database migration coverage.
 - Typed generated frontend client; current preview types are handwritten.
 
 ## Deliberate preview limits
 
-The browser exposes bundled samples only. No model upload/export, agent, training, gradient tools,
-or arbitrary architecture support. Bundled parameter tables are returned whole; bounded
-slice APIs are required before import. History lists at most 100 recent revisions.
+The browser exposes samples and native packages for supported dense networks. ONNX, agent,
+training, gradient tools and arbitrary architectures are not implemented. History lists at
+most 100 recent revisions. Full-network string rendering is capped at 100,000 connections.
 Restoration works through history; a dedicated undo/redo toolbar is not implemented.
 Runs are synchronous and slider requests are debounced; browser abort prevents stale display
-but does not cancel backend computation. All samples are sufficiently small for this preview.
+but does not cancel backend computation. See the import guide for current processing bounds.
 
 Do not expose this preview on a public interface or describe it as a hardened model sandbox.

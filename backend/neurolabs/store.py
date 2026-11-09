@@ -53,6 +53,9 @@ class Store:
                     id TEXT PRIMARY KEY, revision_id TEXT NOT NULL REFERENCES revisions(id),
                     result TEXT NOT NULL, created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS model_imports (
+                    model_id TEXT PRIMARY KEY REFERENCES models(id), info TEXT NOT NULL
+                );
             """)
             db.execute("BEGIN IMMEDIATE")
             columns = {row["name"] for row in db.execute("PRAGMA table_info(revisions)")}
@@ -60,7 +63,7 @@ class Store:
                 db.execute("ALTER TABLE revisions ADD COLUMN name TEXT NOT NULL DEFAULT ''")
             db.execute("""UPDATE revisions SET name = CASE WHEN parent IS NULL THEN 'Original model'
                 ELSE 'Revision ' || substr(id, 1, 8) END WHERE name = ''""")
-            db.execute("PRAGMA user_version = 2")
+            db.execute("PRAGMA user_version = 3")
 
     @contextmanager
     def connection(self):
@@ -95,7 +98,13 @@ class Store:
             raise ValueError("Tensor artifact failed integrity verification")
         return load(data)["value"]
 
-    def register(self, spec: ModelSpec, parameters: dict, default_input: list[float]) -> None:
+    def register(
+        self,
+        spec: ModelSpec,
+        parameters: dict,
+        default_input: list[float],
+        import_info: dict | None = None,
+    ) -> None:
         validate_parameters(spec, parameters)
         blobs = {key: self.write_tensor(value) for key, value in parameters.items()}
         revision = uuid.uuid4().hex
@@ -107,6 +116,10 @@ class Store:
                 "INSERT INTO models VALUES (?, ?, ?, ?, ?)",
                 (spec.id, spec.model_dump_json(), revision, revision, canonical(default_input)),
             )
+            if import_info is not None:
+                db.execute(
+                    "INSERT INTO model_imports VALUES (?, ?)", (spec.id, canonical(import_info))
+                )
             db.execute(
                 "INSERT INTO revisions (id, model_id, parent, tensors, changes, created_at, name) "
                 "VALUES (?, ?, NULL, ?, '[]', ?, ?)",
@@ -134,6 +147,9 @@ class Store:
                 WHERE models.id=?""",
                 (model_id,),
             ).fetchone()
+            imported = db.execute(
+                "SELECT info FROM model_imports WHERE model_id=?", (model_id,)
+            ).fetchone()
         if row is None:
             raise KeyError("Model not found")
         return {
@@ -143,6 +159,7 @@ class Store:
             "default_input": json.loads(row["default_input"]),
             "head_name": row["head_name"],
             "original_name": row["original_name"],
+            "import_info": json.loads(imported["info"]) if imported else None,
         }
 
     def revision(self, revision_id: str) -> dict:

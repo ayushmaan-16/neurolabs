@@ -44,6 +44,11 @@ environment variable remain supported, so the rename preserves saved revisions.
 
 ## Try the first experiment
 
+**Bring your own model:** click **Import model**, download the example ZIP or use the
+[Python exporter](docs/model-import.md), review compatibility, then import it into the
+workspace. Supported dense models share the graph, weights, diagnostics and revision
+workflow. **Export saved revision** downloads the selected checkpoint as a reusable ZIP.
+
 1. Select **The linear map**, whose original behavior is `f(x) = 0.5x`.
 2. Change input `x₀` and inspect the output and response plot.
 3. Click the connection, change its weight to `1` in the inspector, and press **Stage**.
@@ -134,7 +139,10 @@ Dense scenes use instanced neurons and batched curves, with animation capped at 
 (15 fps in the full-network view). The graph remains free of text and numbers.
 The contract still allows width 256
 and one million parameters, but this bundled 64-wide study is the current large example.
-General import, bounded tensor APIs, and broader hardware/memory profiling remain future work.
+Native ZIP import/export and bounded binary/slice parameter APIs are implemented.
+Matrices use 64 × 64 blocks for wider tensors. All-connections rendering is capped at
+100,000 connections; larger models use layer-pair/neuron inspection. Broader hardware
+and memory profiling, ONNX import/export and general cancellable jobs remain future work.
 
 ## Verify
 

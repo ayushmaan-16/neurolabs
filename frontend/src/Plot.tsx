@@ -3,12 +3,20 @@ import { number, type Run } from "./api";
 export function Plot({
   current,
   baseline,
+  pending = false,
 }: {
   current: Run | null;
   baseline: Run | null;
+  pending?: boolean;
 }) {
   if (!current || !baseline)
-    return <div className="plot-placeholder">Computing a response slice…</div>;
+    return (
+      <div className="plot-placeholder">
+        {pending
+          ? "Computing a response slice…"
+          : "Response slice unavailable. The fixed −2 to 2 sweep could not complete; inspect the selected input above."}
+      </div>
+    );
   const all = [...current.outputs, ...baseline.outputs].flat();
   const lo = Math.min(...all) - 0.2,
     hi = Math.max(...all) + 0.2;

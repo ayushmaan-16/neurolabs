@@ -1,7 +1,7 @@
 # Later intervention and training workstreams
 
 Updated 2026-11-09. These are future steps, not implemented features. The current browser
-supports bundled dense models, parameter revisions, forward-pass replay and batch diagnostics.
+supports bundled/native-imported dense models, parameter revisions, forward-pass replay and batch diagnostics.
 The Python audit bridge supports an engineer's own constrained in-memory Sequential MLP.
 The architecture/research contract and its feasibility gates remain authoritative.
 

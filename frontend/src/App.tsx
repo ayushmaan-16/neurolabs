@@ -20,6 +20,8 @@ import {
   api,
   number,
   parameterText,
+  loadParameters,
+  downloadPackage,
   type Model,
   type Parameters,
   type Revision,
@@ -30,6 +32,7 @@ import { Plot } from "./Plot";
 import { Inspector } from "./Inspector";
 import { Diagnostics } from "./Diagnostics";
 import { Weights } from "./Weights";
+import { ModelImport, ImportedInputs } from "./ModelImport";
 import {
   type Draft,
   type Change,
@@ -146,16 +149,8 @@ export function App() {
     const controller = new AbortController();
     const prefix = `/models/${model.spec.id}`;
     Promise.all([
-      api<Parameters>(
-        `${prefix}/revisions/${model.head}/parameters`,
-        undefined,
-        controller.signal,
-      ),
-      api<Parameters>(
-        `${prefix}/revisions/${model.original}/parameters`,
-        undefined,
-        controller.signal,
-      ),
+      loadParameters(model, model.head, controller.signal),
+      loadParameters(model, model.original, controller.signal),
       api<Revision[]>(`${prefix}/revisions`, undefined, controller.signal),
     ])
       .then(([values, original, revisions]) => {
@@ -183,7 +178,7 @@ export function App() {
       ]);
       const route = `/models/${model.spec.id}/runs`;
       const main = changes.length
-        ? api<{ run: Run; sweep: Run }>(
+        ? api<{ run: Run; sweep: Run | null }>(
             `/models/${model.spec.id}/draft-preview`,
             {
               base_revision: draft!.base_revision,
@@ -191,7 +186,7 @@ export function App() {
               inputs,
             },
             controller.signal,
-          ).then((result) => [result.run, result.sweep])
+          ).then((result) => [result.run, result.sweep] as const)
         : Promise.all([
             api<Run>(
               route,
@@ -209,7 +204,7 @@ export function App() {
               route,
               { revision_id: model.head, inputs: rows },
               controller.signal,
-            ),
+            ).catch(() => null),
           ]);
       Promise.all([
         main,
@@ -217,7 +212,7 @@ export function App() {
           route,
           { revision_id: model.original, inputs: rows },
           controller.signal,
-        ),
+        ).catch(() => null),
       ])
         .then(([[result, curve], original]) => {
           if (!controller.signal.aborted) {
@@ -372,6 +367,21 @@ export function App() {
       setBusy(false);
     }
   }
+  async function exportSaved() {
+    if (!model || draft) return;
+    setBusy(true);
+    setError("");
+    try {
+      await downloadPackage(
+        `/models/${model.spec.id}/revisions/${model.head}/export`,
+        `${model.spec.id}-${model.head.slice(0, 8)}.zip`,
+      );
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const dense = operation?.kind === "dense" ? operation : undefined;
   const unstaged =
@@ -425,13 +435,26 @@ export function App() {
             Trace the result.
           </p>
           <div className="section-label">
-            SAMPLE COLLECTION{" "}
+            MODEL COLLECTION{" "}
             <span>{String(models.length).padStart(2, "0")}</span>
           </div>
-          <nav aria-label="Sample models" className="sample-list">
+          <ModelImport
+            disabled={busy}
+            onImported={(imported) => {
+              setModels((all) => [
+                ...all.filter((item) => item.spec.id !== imported.spec.id),
+                imported,
+              ]);
+              setActiveId(imported.spec.id);
+              setTab("architecture");
+              setError("");
+            }}
+          />
+          <nav aria-label="Model collection" className="sample-list">
             {models.map((item, i) => (
               <button
                 key={item.spec.id}
+                title={`${item.spec.name} · ${item.spec.id}`}
                 disabled={busy}
                 className={`sample-card ${item.spec.id === activeId ? "active" : ""}`}
                 onClick={() => {
@@ -451,6 +474,9 @@ export function App() {
                 <span>
                   <strong>{item.spec.name}</strong>
                   <small>
+                    {item.import_info
+                      ? `Imported ${item.spec.id.slice(7, 13)} · `
+                      : ""}
                     {item.spec.input_width} input
                     {item.spec.input_width > 1 ? "s" : ""} ·{" "}
                     {
@@ -542,6 +568,23 @@ export function App() {
                   </div>
                   <h2>{model.spec.name}</h2>
                   <p>{model.spec.description}</p>
+                  {model.import_info && (
+                    <details className="import-context">
+                      <summary>
+                        Original import ·{" "}
+                        {model.import_info.verification.status === "passed"
+                          ? "supplied examples verified"
+                          : "no verification examples"}
+                      </summary>
+                      <p>{model.import_info.metadata.input_note}</p>
+                      {!!model.import_info.metadata.output_names.length && (
+                        <p>
+                          Output order:{" "}
+                          {model.import_info.metadata.output_names.join(", ")}
+                        </p>
+                      )}
+                    </details>
+                  )}
                 </div>
                 <button
                   className="secondary-button"
@@ -808,39 +851,47 @@ export function App() {
                 <div className="experiment-grid">
                   <div className="inputs">
                     <div className="section-label">INPUT VECTOR</div>
-                    {inputs.map((value, index) => (
-                      <label className="input-control" key={index}>
-                        <span>
+                    {model.import_info ? (
+                      <ImportedInputs
+                        model={model}
+                        values={inputs}
+                        onChange={setInputs}
+                      />
+                    ) : (
+                      inputs.map((value, index) => (
+                        <label className="input-control" key={index}>
                           <span>
-                            Input{inputs.length > 1 ? ` ${index + 1}` : ""}
+                            <span>
+                              Input{inputs.length > 1 ? ` ${index + 1}` : ""}
+                            </span>
+                            <code>{number(value)}</code>
                           </span>
-                          <code>{number(value)}</code>
-                        </span>
-                        <input
-                          aria-label={`Input ${index}`}
-                          type="range"
-                          min={Math.min(-2, value)}
-                          max={Math.max(2, value)}
-                          step="0.01"
-                          value={value}
-                          onChange={(event) =>
-                            setInputs(
-                              inputs.map((v, i) =>
-                                i === index ? Number(event.target.value) : v,
-                              ),
-                            )
-                          }
-                        />
-                        <div className="range-labels">
-                          <span>{number(Math.min(-2, value))}</span>
-                          <span>{number(Math.max(2, value))}</span>
-                        </div>
-                      </label>
-                    ))}
+                          <input
+                            aria-label={`Input ${index}`}
+                            type="range"
+                            min={Math.min(-2, value)}
+                            max={Math.max(2, value)}
+                            step="0.01"
+                            value={value}
+                            onChange={(event) =>
+                              setInputs(
+                                inputs.map((v, i) =>
+                                  i === index ? Number(event.target.value) : v,
+                                ),
+                              )
+                            }
+                          />
+                          <div className="range-labels">
+                            <span>{number(Math.min(-2, value))}</span>
+                            <span>{number(Math.max(2, value))}</span>
+                          </div>
+                        </label>
+                      ))
+                    )}
                     <div className="output-values">
                       <span className="section-label">
                         {model.spec.task === "classification"
-                          ? "OUTPUT LOGITS"
+                          ? "OUTPUT VALUES"
                           : "OUTPUT VECTOR"}
                       </span>
                       <strong>
@@ -852,9 +903,11 @@ export function App() {
                     <div className="plot-caption">
                       <span>
                         Response across input
-                        {inputs.length > 1
-                          ? ` · other inputs held at ${inputs.slice(1).map(number).join(", ")}`
-                          : ""}
+                        {inputs.length > 8
+                          ? ` 0 · other ${inputs.length - 1} features held fixed`
+                          : inputs.length > 1
+                            ? ` · other inputs held at ${inputs.slice(1).map(number).join(", ")}`
+                            : ""}
                       </span>
                       <div>
                         <span className="legend-line" />
@@ -862,10 +915,30 @@ export function App() {
                         Original
                       </div>
                     </div>
-                    <Plot current={currentSweep} baseline={originalSweep} />
+                    <Plot
+                      current={currentSweep}
+                      baseline={originalSweep}
+                      pending={running}
+                    />
                   </div>
                 </div>
               </section>
+              <div className="model-export">
+                {draft ? (
+                  <span>Save or discard the draft to export a checkpoint.</span>
+                ) : (
+                  <a
+                    href={`/api/v1/models/${model.spec.id}/revisions/${model.head}/export`}
+                    download
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (!busy) void exportSaved();
+                    }}
+                  >
+                    Export saved revision · {model.head_name}
+                  </a>
+                )}
+              </div>
               <footer className="main-footer">
                 <span>Inspectable computation. Reproducible change.</span>
                 <span>neuroLabs · foundation preview</span>

@@ -42,7 +42,7 @@ Captum attribution, isolate a causal neuron, or explain why a prediction is corr
 
 ## Browser workflow
 
-1. Select a bundled model and open **Diagnostics**.
+1. Select a bundled or imported supported model and open **Diagnostics**.
 2. Paste inputs or load a CSV: numeric values only, no header or target columns, one
    input vector per line. Supply 2–256 rows with the model's exact input width.
    CSV files are limited to 256 KiB. Values must remain finite in float32.
@@ -78,8 +78,9 @@ globally dead.
 
 ## Use your own MLP from Python
 
-Browser model import is still unavailable. Engineers can run the same audit on their own
-already-created `torch.nn.Sequential` model through the Python entry point:
+For browser inspection, use the [native model exporter and upload workflow](model-import.md).
+Engineers can also run the same audit directly on their own already-created
+`torch.nn.Sequential` model through the Python entry point:
 
 ```python
 import json

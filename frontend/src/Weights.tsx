@@ -34,17 +34,27 @@ export function Weights({
   const vector = tensor?.shape.length === 1;
   const rows = tensor?.shape[0] ?? 0;
   const columns = vector ? 1 : (tensor?.shape[1] ?? 0);
+  const rowStart = Math.floor(coordinate[0] / 64) * 64;
+  const columnStart = vector ? 0 : Math.floor((coordinate[1] ?? 0) / 64) * 64;
+  const visibleRows = Math.min(64, rows - rowStart);
+  const visibleColumns = Math.min(64, columns - columnStart);
   const cells = useRef(new Map<string, HTMLButtonElement>());
+  const scrollArea = useRef<HTMLDivElement>(null);
   const [row, setRow] = useState("0"),
     [column, setColumn] = useState("0");
   const [exact, setExact] = useState(false);
   useEffect(() => {
     setRow(String(coordinate[0]));
     setColumn(String(coordinate[1] ?? 0));
-    cells.current
-      .get(coordinate.join(","))
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [tensorId, coordinate.join(","), !!tensor]);
+    const reveal = () =>
+      cells.current
+        .get(coordinate.join(","))
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    if (scrollArea.current) observer.observe(scrollArea.current);
+    return () => observer.disconnect();
+  }, [tensorId, coordinate.join(","), !!tensor, exact]);
   const staged = new Set(changes.map(cellKey));
   const selected = tensor
     ? vector
@@ -161,11 +171,64 @@ export function Weights({
           Select a cell, then edit and stage its value in the Inspector.
         </span>
       </div>
+      {(rows > 64 || columns > 64) && (
+        <div className="tensor-pages">
+          <label>
+            Rows
+            <select
+              aria-label="Matrix row block"
+              value={rowStart}
+              onChange={(event) =>
+                onSelect(
+                  tensorId,
+                  vector
+                    ? [Number(event.target.value)]
+                    : [Number(event.target.value), coordinate[1]],
+                )
+              }
+            >
+              {Array.from({ length: Math.ceil(rows / 64) }, (_, page) => (
+                <option value={page * 64} key={page}>
+                  {page * 64}–{Math.min(rows - 1, page * 64 + 63)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!vector && (
+            <label>
+              Columns
+              <select
+                aria-label="Matrix column block"
+                value={columnStart}
+                onChange={(event) =>
+                  onSelect(tensorId, [
+                    coordinate[0],
+                    Number(event.target.value),
+                  ])
+                }
+              >
+                {Array.from({ length: Math.ceil(columns / 64) }, (_, page) => (
+                  <option value={page * 64} key={page}>
+                    {page * 64}–{Math.min(columns - 1, page * 64 + 63)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <span>
+            Showing rows {rowStart}–{rowStart + visibleRows - 1}
+            {!vector &&
+              ` · columns ${columnStart}–${columnStart + visibleColumns - 1}`}
+            . Select a block or jump to a coordinate.
+          </span>
+        </div>
+      )}
       {!tensor ? (
         <p>Loading parameters…</p>
       ) : (
         <div
           className={`tensor-scroll ${exact ? "tensor-exact" : ""}`}
+          ref={scrollArea}
           role="region"
           aria-label="Parameter matrix scroll area"
           tabIndex={0}
@@ -181,7 +244,10 @@ export function Weights({
                 <th className="tensor-corner">
                   To ↓{!vector && <span>From →</span>}
                 </th>
-                {Array.from({ length: columns }, (_, c) => (
+                {Array.from(
+                  { length: visibleColumns },
+                  (_, i) => i + columnStart,
+                ).map((c) => (
                   <th key={c} scope="col">
                     {vector ? "Bias" : `From ${c}`}
                   </th>
@@ -189,46 +255,51 @@ export function Weights({
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: rows }, (_, r) => (
-                <tr key={r}>
-                  <th scope="row">To {r}</th>
-                  {Array.from({ length: columns }, (_, c) => {
-                    const index = vector ? [r] : [r, c];
-                    const value = vector
-                      ? (tensor.values as number[])[r]
-                      : (tensor.values as number[][])[r][c];
-                    const originalValue = original
-                      ? vector
-                        ? (original.values as number[])[r]
-                        : (original.values as number[][])[r]?.[c]
-                      : undefined;
-                    const picked = coordinate.join(",") === index.join(",");
-                    const pending = staged.has(
-                      cellKey({ tensor_id: tensorId, index }),
-                    );
-                    const differs =
-                      originalValue !== undefined && originalValue !== value;
-                    return (
-                      <td key={c}>
-                        <button
-                          ref={(element) => {
-                            if (element)
-                              cells.current.set(index.join(","), element);
-                            else cells.current.delete(index.join(","));
-                          }}
-                          className={`tensor-cell ${value < 0 ? "negative" : "positive"} ${picked ? "selected" : ""} ${differs ? "changed" : ""} ${pending ? "staged" : ""}`}
-                          aria-pressed={picked}
-                          aria-label={`${tensorId} [${index.join(", ")}] = ${value}`}
-                          title={`${tensorId}[${index.join(", ")}] = ${parameterText(value)}${differs ? ` · ${model.original_name}: ${parameterText(originalValue)}` : ""}${pending ? " · staged" : ""}`}
-                          onClick={() => onSelect(tensorId, index)}
-                        >
-                          {exact ? parameterText(value) : displayValue(value)}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {Array.from({ length: visibleRows }, (_, i) => i + rowStart).map(
+                (r) => (
+                  <tr key={r}>
+                    <th scope="row">To {r}</th>
+                    {Array.from(
+                      { length: visibleColumns },
+                      (_, i) => i + columnStart,
+                    ).map((c) => {
+                      const index = vector ? [r] : [r, c];
+                      const value = vector
+                        ? (tensor.values as number[])[r]
+                        : (tensor.values as number[][])[r][c];
+                      const originalValue = original
+                        ? vector
+                          ? (original.values as number[])[r]
+                          : (original.values as number[][])[r]?.[c]
+                        : undefined;
+                      const picked = coordinate.join(",") === index.join(",");
+                      const pending = staged.has(
+                        cellKey({ tensor_id: tensorId, index }),
+                      );
+                      const differs =
+                        originalValue !== undefined && originalValue !== value;
+                      return (
+                        <td key={c}>
+                          <button
+                            ref={(element) => {
+                              if (element)
+                                cells.current.set(index.join(","), element);
+                              else cells.current.delete(index.join(","));
+                            }}
+                            className={`tensor-cell ${value < 0 ? "negative" : "positive"} ${picked ? "selected" : ""} ${differs ? "changed" : ""} ${pending ? "staged" : ""}`}
+                            aria-pressed={picked}
+                            aria-label={`${tensorId} [${index.join(", ")}] = ${value}`}
+                            title={`${tensorId}[${index.join(", ")}] = ${parameterText(value)}${differs ? ` · ${model.original_name}: ${parameterText(originalValue)}` : ""}${pending ? " · staged" : ""}`}
+                            onClick={() => onSelect(tensorId, index)}
+                          >
+                            {exact ? parameterText(value) : displayValue(value)}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         </div>

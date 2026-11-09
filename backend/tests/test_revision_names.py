@@ -123,4 +123,4 @@ def test_legacy_database_migration_preserves_artifacts_heads_and_retry(tmp_path)
     assert reopened.model("linear")["head_name"] == "Persistent name"
     assert reopened.revision(named["id"])["name"] == "Persistent name"
     with reopened.connection() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 3

@@ -1,17 +1,21 @@
-"""Local API for the sample-model vertical slice. Import is deliberately not exposed yet."""
+"""Local API for supported dense models and native data-only packages."""
 
+import hashlib
 import os
 import secrets
 from pathlib import Path
 
 import torch
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from neurolabs.diagnostics import analyze
 from neurolabs.editing import apply_changes, draft_id
+from neurolabs.imports import ImportBusyError, ImportPreviews
+from neurolabs.packages import MAX_PACKAGE_BYTES, Examples, Manifest, make_package, read_package
 from neurolabs.runtime import execute
 from neurolabs.samples import samples
 from neurolabs.schema import (
@@ -39,6 +43,7 @@ def create_app(root: Path | None = None) -> FastAPI:
     torch.set_num_threads(1)
     torch.use_deterministic_algorithms(True)
     store = Store(root or data_directory())
+    previews = ImportPreviews()
     for spec, parameters, default_input in samples():
         store.register(spec, parameters, default_input)
     app = FastAPI(title="neuroLabs", version="0.1.0")
@@ -92,6 +97,10 @@ def create_app(root: Path | None = None) -> FastAPI:
     async def conflict_handler(request, exc):
         return JSONResponse({"error": {"code": "revision_conflict", "message": str(exc)}}, 409)
 
+    @app.exception_handler(ImportBusyError)
+    async def import_busy_handler(request, exc):
+        return JSONResponse({"error": {"code": "import_busy", "message": str(exc)}}, 503)
+
     @app.exception_handler(ValueError)
     async def value_handler(request, exc):
         return JSONResponse({"error": {"code": "invalid_operation", "message": str(exc)}}, 422)
@@ -106,12 +115,66 @@ def create_app(root: Path | None = None) -> FastAPI:
             "status": "ok",
             "version": "0.1.0",
             "runtime": "pytorch-cpu",
-            "capabilities": ["samples", "execute", "capture", "edit", "restore"],
+            "capabilities": [
+                "samples",
+                "execute",
+                "capture",
+                "edit",
+                "restore",
+                "native-import",
+                "native-export",
+            ],
         }
 
     @app.get("/api/v1/session")
     def session():
         return JSONResponse({"token": session_token}, headers={"Cache-Control": "no-store"})
+
+    @app.post("/api/v1/imports/preview")
+    async def import_preview(request: Request):
+        # Stream with a hard cap, including clients without Content-Length. No multipart parser.
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > MAX_PACKAGE_BYTES:
+            return JSONResponse({"error": {"message": "Model packages must be at most 6 MiB"}}, 413)
+        data = bytearray()
+        async for chunk in request.stream():
+            if len(data) + len(chunk) > MAX_PACKAGE_BYTES:
+                return JSONResponse(
+                    {"error": {"message": "Model packages must be at most 6 MiB"}}, 413
+                )
+            data.extend(chunk)
+        return await run_in_threadpool(previews.inspect, bytes(data))
+
+    @app.post("/api/v1/imports/{token}", status_code=201)
+    def import_model(token: str):
+        data, result = previews.get(token)
+        manifest, values, _ = read_package(data)
+        # Server-assigned identity avoids overwriting samples or another uploaded model.
+        spec = manifest.spec.model_copy(update={"id": f"import-{token}"})
+        store.register(
+            spec,
+            values,
+            list(manifest.default_input),
+            import_info={
+                "package_sha256": result["sha256"],
+                "metadata": manifest.metadata.model_dump(),
+                "verification": result["verification"],
+            },
+        )
+        return store.model(spec.id)
+
+    @app.get("/api/v1/import-example")
+    def import_example():
+        spec, values, inputs = next(item for item in samples() if item[0].id == "curve")
+        spec = spec.model_copy(update={"name": "Imported rectified curve"})
+        rows = [[-1.0], [0.5], [1.0]]
+        examples = Examples(inputs=rows, outputs=execute(spec, values, rows, "example")["outputs"])
+        manifest = Manifest(spec=spec, default_input=inputs)
+        return Response(
+            make_package(manifest, values, examples),
+            media_type="application/zip",
+            headers={"Content-Disposition": 'attachment; filename="neurolabs-example.zip"'},
+        )
 
     @app.get("/api/v1/models")
     def list_models():
@@ -128,7 +191,8 @@ def create_app(root: Path | None = None) -> FastAPI:
     @app.get("/api/v1/models/{model_id}/revisions/{revision_id}/parameters")
     def parameters(model_id: str, revision_id: str):
         _, values = store.snapshot(model_id, revision_id)
-        # Bundled models only. Bounded slices replace this endpoint before browser model import.
+        if sum(value.numel() for value in values.values()) > 100_000:
+            raise ValueError("Use parameter slices for models larger than 100,000 parameters")
         return {
             "revision_id": revision_id,
             "tensors": {
@@ -136,6 +200,72 @@ def create_app(root: Path | None = None) -> FastAPI:
                 for key, value in values.items()
             },
         }
+
+    @app.get("/api/v1/models/{model_id}/revisions/{revision_id}/tensors/{tensor_id}")
+    def tensor_slice(
+        model_id: str,
+        revision_id: str,
+        tensor_id: str,
+        row: int = Query(0, ge=0),
+        rows: int = Query(64, ge=1, le=64),
+        column: int = Query(0, ge=0),
+        columns: int = Query(64, ge=1, le=64),
+    ):
+        _, values = store.snapshot(model_id, revision_id)
+        if tensor_id not in values:
+            raise KeyError("Tensor not found")
+        tensor = values[tensor_id]
+        if row >= tensor.shape[0] or column >= (tensor.shape[1] if tensor.ndim == 2 else 1):
+            raise ValueError("Slice starts outside the tensor")
+        sliced = tensor[row : row + rows]
+        if tensor.ndim == 2:
+            sliced = sliced[:, column : column + columns]
+        return {
+            "revision_id": revision_id,
+            "tensor_id": tensor_id,
+            "shape": list(tensor.shape),
+            "row": row,
+            "column": column,
+            "values": sliced.tolist(),
+        }
+
+    @app.get("/api/v1/models/{model_id}/revisions/{revision_id}/parameter-data")
+    def parameter_data(model_id: str, revision_id: str):
+        spec, values = store.snapshot(model_id, revision_id)
+        # At most 4 MB at the enforced 1M float32 limit; order comes from immutable spec.
+        data = b"".join(
+            values[tensor.id].numpy().astype("<f4").tobytes() for tensor in spec.tensors
+        )
+        return Response(
+            data,
+            media_type="application/octet-stream",
+            headers={
+                "ETag": hashlib.sha256(data).hexdigest(),
+                "X-Revision-ID": revision_id,
+                "Cache-Control": "private, max-age=31536000, immutable",
+            },
+        )
+
+    @app.get("/api/v1/models/{model_id}/revisions/{revision_id}/export")
+    def export_model(model_id: str, revision_id: str):
+        spec, values = store.snapshot(model_id, revision_id)
+        model = store.model(model_id)
+        info = model["import_info"] or {}
+        manifest = Manifest(
+            spec=spec, default_input=model["default_input"], metadata=info.get("metadata", {})
+        )
+        rows = [model["default_input"]]
+        examples = Examples(
+            inputs=rows, outputs=execute(spec, values, rows, revision_id)["outputs"]
+        )
+        data = make_package(manifest, values, examples)
+        return Response(
+            data,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{model_id}-{revision_id[:8]}.zip"',
+            },
+        )
 
     @app.post("/api/v1/models/{model_id}/revisions", status_code=201)
     def edit(model_id: str, request: EditRequest):
@@ -190,8 +320,12 @@ def create_app(root: Path | None = None) -> FastAPI:
         rows = [[-2 + index / 16, *request.inputs[1:]] for index in range(65)]
         run = execute(spec, values, [request.inputs], revision, captures)
         run.update(id=revision, is_draft=True, base_revision=request.base_revision)
-        sweep = execute(spec, values, rows, revision)
-        sweep.update(id=revision, is_draft=True, base_revision=request.base_revision)
+        try:
+            sweep = execute(spec, values, rows, revision)
+            sweep.update(id=revision, is_draft=True, base_revision=request.base_revision)
+        except ValueError:
+            # A fixed visualization sweep can overflow while the selected input is valid.
+            sweep = None
         return {"run": run, "sweep": sweep}
 
     dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"

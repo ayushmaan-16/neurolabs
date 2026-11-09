@@ -32,8 +32,9 @@ object for every neuron. Version 1 bounds: 16 dense layers, width 256, 1 million
 batch 256, float32. ReLU, Tanh, Sigmoid, Identity, and final Softmax are supported.
 Shared parameters, cycles, unused tensors, and mismatched shapes are rejected.
 
-The importer milestone will add a native JSON/safetensors package and ONNX opsets 17/18
-for constrained Gemm / MatMul + Add chains. External ONNX data, custom operations,
+Native JSON/safetensors ZIP import/export is implemented; see [model-import.md](model-import.md).
+The next importer milestone adds ONNX opsets 17/18 for constrained Gemm / MatMul + Add chains.
+External ONNX data, custom operations,
 unresolved feature dimensions, and arbitrary broadcasting are excluded. Export emits a
 normalized model, not a byte-identical recreation.
 
@@ -66,10 +67,12 @@ The API is versioned under `/api/v1`. Loopback binding, Host/Origin validation, 
 per-launch credential protect browser requests. This is a single-user application,
 not a public upload service. Local processes can access the session endpoint intentionally.
 
-The preview exposes sample models only. Its execution is synchronous in the backend's
-request thread pool. Before accepting external models or long-running experiments, add
-a bounded worker process with time/memory limits, restart/cancellation, persisted jobs,
-and bounded tensor slices. A subprocess is not a hostile-code sandbox.
+The preview accepts samples and constrained native dense packages. Package parsing and
+verification run in a single, short-lived subprocess with a 30-second deadline, bounded
+upload/entry sizes and expiring previews. Imported tensor transport is bounded binary data,
+with JSON slice APIs and 64 x 64 matrix blocks. General execution remains synchronous in
+the API thread pool; long-running experiments still require general worker time/memory
+limits, restart/cancellation and persisted jobs. A subprocess is not a hostile-code sandbox.
 
 ## Visualization architecture
 
@@ -90,7 +93,8 @@ Small scenes retain individual curve components. Dense scenes use one instanced 
 mesh, one batched LineSegments geometry and instanced replay particles. Overview samples
 at most 96 connections per transition while showing every neuron; layer-pair focus draws
 every edge in that pair, and neuron focus draws every incoming/outgoing edge. Filtering
-can be disabled with All connections, which draws every string and shows every neuron.
+can be disabled with All connections up to 100,000 connections; larger models use layer-pair
+or neuron inspection. Every neuron is shown in overview.
 That mode uses eight curve segments and a 15 fps animation ceiling to bound per-frame work.
 With reduced motion enabled, stationary dense scenes redraw only when state or the camera changes.
 Filtering never changes runtime execution or captures. Selection remains tied to real tensor
@@ -98,7 +102,7 @@ coordinates; displayed counts make filtering explicit. Camera framing follows th
 Projected keyboard targets use cached viewport dimensions to avoid per-target layout
 flushes. Dense scenes cap animation at 30 fps and omit thousands of overlapping keyboard
 edge targets in overview/full/pair views; neuron focus and inspector/matrix controls provide
-individual keyboard access. HTML matrices still render the selected bundled tensor whole.
+individual keyboard access. HTML matrices render at most one 64 x 64 block of the selected tensor.
 The Weights tab fixes cell widths inside a scroll region, keeps source-column/destination-row
 headers visible, and provides coordinate navigation. Biases form a vertical single-column
 vector. Compact rounded values, float32 round-trip text, staged markers and original-value
