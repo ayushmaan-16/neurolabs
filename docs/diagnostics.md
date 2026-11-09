@@ -107,6 +107,9 @@ report to render its graph is also not implemented.
 
 ## Deliberately deferred
 
+See [the later-work roadmap](roadmap.md) for candidate interventions, architecture-aware
+revisions and the proposed instrumented-training/control workstream.
+
 - Training-gradient diagnostics: require a declared loss, labels/targets or an explicitly
   selected scalar output, and actual autograd capture. Small activations are not evidence
   of vanishing gradients.

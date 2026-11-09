@@ -42,6 +42,9 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
 
 ## Remaining feasibility gates
 
+Deferred intervention/evaluation and proposed training visualization/control milestones are
+recorded in [roadmap.md](roadmap.md); these have not been implemented.
+
 - Bidirectional ONNX normalization/import/export. Current ONNX tests compare execution
   against independently constructed graphs; they do not establish importer coverage.
 - Bounded worker process, resource caps, cancellation and crash recovery.

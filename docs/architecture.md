@@ -113,6 +113,10 @@ Phase 6 adds the investigator. Neither depends on completing CNN/Transformer sup
 
 ## Roadmap and release gates
 
+Later intervention/evaluation work and the proposed training-observation/control track are
+specified in [the later-work roadmap](roadmap.md). They are deferred, dependency-gated work,
+not current capabilities, and do not replace the blinded research objective.
+
 1. **Phase 0:** numerical fixtures and independent ONNX parity; rendering stress benchmark;
    normalized ONNX roundtrip; worker resource/cancellation tests; storage recovery tests.
 2. **Phase 1:** a polished real vertical slice: sample → inspect → edit → run → restore;
