@@ -182,18 +182,20 @@ export function Network3D({
     setTrace(null);
     setProgress(0);
     try {
-      const result = await api<Run>(
-        `/models/${model.spec.id}/runs`,
-        {
-          revision_id: model.head,
-          inputs: run.inputs,
-          captures: [
-            model.spec.input_name,
-            ...model.spec.operations.map((op) => op.output),
-          ],
-        },
-        abort.signal,
-      );
+      const result = run.is_draft
+        ? run
+        : await api<Run>(
+            `/models/${model.spec.id}/runs`,
+            {
+              revision_id: model.head,
+              inputs: run.inputs,
+              captures: [
+                model.spec.input_name,
+                ...model.spec.operations.map((op) => op.output),
+              ],
+            },
+            abort.signal,
+          );
       if (!abort.signal.aborted) {
         setTrace(result);
         setPlaying(

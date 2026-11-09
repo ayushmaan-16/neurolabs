@@ -12,6 +12,7 @@ from pathlib import Path
 import torch
 from safetensors.torch import load, save
 
+from neurolabs.editing import apply_changes
 from neurolabs.runtime import validate_parameters
 from neurolabs.schema import EditRequest, ModelSpec
 
@@ -156,37 +157,11 @@ class Store:
             if model["head"] != request.base_revision:
                 raise ConflictError("Active revision changed; refresh before applying this edit")
             spec, parameters = self.snapshot(model_id, request.base_revision)
-            seen = set()
-            changes = []
+            parameters, changes = apply_changes(spec, parameters, request.changes)
+            if not changes:
+                raise ValueError("No effective parameter changes to save")
             blobs = self.revision(request.base_revision)["tensors"]
-            for edit in request.changes:
-                coordinate = (edit.tensor_id, edit.index)
-                if coordinate in seen:
-                    raise ValueError("An edit may only address each coordinate once")
-                seen.add(coordinate)
-                tensor = parameters.get(edit.tensor_id)
-                if (
-                    tensor is None
-                    or len(edit.index) != tensor.ndim
-                    or any(i >= size for i, size in zip(edit.index, tensor.shape, strict=True))
-                ):
-                    raise ValueError("Tensor coordinate is out of bounds")
-                effective = torch.tensor(edit.value, dtype=torch.float32)
-                if not torch.isfinite(effective).item():
-                    raise ValueError("Edit must remain finite in float32")
-                old = tensor[edit.index].item()
-                tensor[edit.index] = effective
-                changes.append(
-                    {
-                        "tensor_id": edit.tensor_id,
-                        "index": list(edit.index),
-                        "old": old,
-                        "requested": edit.value,
-                        "value": effective.item(),
-                    }
-                )
-            validate_parameters(spec, parameters)
-            for key in {edit.tensor_id for edit in request.changes}:
+            for key in {change["tensor_id"] for change in changes}:
                 blobs[key] = self.write_tensor(parameters[key])
             revision_id = uuid.uuid4().hex
             db.execute(

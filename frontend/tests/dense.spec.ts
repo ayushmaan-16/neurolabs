@@ -261,7 +261,7 @@ test("dense edge picking, bias edits, input invalidation and narrow controls", a
     .map(Number);
   const bias = page.getByLabel("Bias", { exact: true });
   await bias.fill(String(Number(await bias.inputValue()) + 1));
-  await page.getByRole("button", { name: "Apply parameter edit" }).click();
+  await page.getByRole("button", { name: "Stage parameter edit" }).click();
   await expect
     .poll(
       async () =>
@@ -276,6 +276,9 @@ test("dense edge picking, bias edits, input invalidation and narrow controls", a
   await expect(page.getByLabel("Propagation progress")).toBeEnabled();
   await page.getByLabel("Input 0", { exact: true }).fill("-1");
   await expect(page.getByLabel("Propagation progress")).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Save revision", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Restore original", exact: true })
     .click();

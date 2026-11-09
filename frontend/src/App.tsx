@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   ArrowUpRight,
@@ -29,6 +29,16 @@ import { Network3D } from "./Network3D";
 import { Plot } from "./Plot";
 import { Inspector } from "./Inspector";
 import { Diagnostics } from "./Diagnostics";
+import {
+  type Draft,
+  type Change,
+  cellKey,
+  draftStorageKey,
+  overlay,
+  readDrafts,
+} from "./draft-state";
+
+const noChanges: Change[] = [];
 
 export function App() {
   const [models, setModels] = useState<Model[]>([]);
@@ -55,17 +65,35 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, Draft>>(readDrafts);
+  const [storageError, setStorageError] = useState("");
+  const [computedKey, setComputedKey] = useState("");
   const model = models.find((item) => item.spec.id === activeId);
-  const currentParameters =
+  const draft = drafts[activeId];
+  const staleDraft = !!draft && draft.base_revision !== model?.head;
+  const changes = draft?.changes ?? noChanges;
+  const draftKey = JSON.stringify([
+    model?.spec.id,
+    model?.head,
+    draft?.base_revision,
+    changes,
+  ]);
+  const savedParameters =
     parameters?.revision_id === model?.head ? parameters : null;
+  const currentParameters = useMemo(
+    () => overlay(savedParameters, staleDraft ? noChanges : changes),
+    [savedParameters, staleDraft, changes],
+  );
   const currentRun =
-    run?.revision_id === model?.head &&
+    computedKey === draftKey &&
+    !staleDraft &&
     run?.inputs[0].length === inputs.length &&
     run?.inputs[0].every((value, index) => value === Math.fround(inputs[index]))
       ? run
       : null;
   const currentSweep =
-    sweep?.revision_id === model?.head &&
+    computedKey === draftKey &&
+    !staleDraft &&
     sweep?.inputs[0]
       .slice(1)
       .every((value, index) => value === Math.fround(inputs[index + 1]))
@@ -94,6 +122,16 @@ export function App() {
     ) ?? 0;
 
   const refresh = async () => setModels(await api<Model[]>("/models"));
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(draftStorageKey, JSON.stringify(drafts));
+      setStorageError("");
+    } catch {
+      setStorageError(
+        "Draft recovery storage is unavailable. Keep this tab open until you save your revision.",
+      );
+    }
+  }, [drafts]);
   useEffect(() => {
     void refresh().catch((e) => setError(e.message));
   }, []);
@@ -145,7 +183,10 @@ export function App() {
   }, [model?.spec.id, model?.head]);
 
   useEffect(() => {
-    if (!model || inputs.length !== model.spec.input_width) return;
+    if (!model || inputs.length !== model.spec.input_width || staleDraft) {
+      setRunning(false);
+      return;
+    }
     const controller = new AbortController();
     setRunning(true);
     const timer = setTimeout(() => {
@@ -154,35 +195,49 @@ export function App() {
         ...inputs.slice(1),
       ]);
       const route = `/models/${model.spec.id}/runs`;
+      const main = changes.length
+        ? api<{ run: Run; sweep: Run }>(
+            `/models/${model.spec.id}/draft-preview`,
+            {
+              base_revision: draft!.base_revision,
+              changes,
+              inputs,
+            },
+            controller.signal,
+          ).then((result) => [result.run, result.sweep])
+        : Promise.all([
+            api<Run>(
+              route,
+              {
+                revision_id: model.head,
+                inputs: [inputs],
+                captures: [
+                  model.spec.input_name,
+                  ...model.spec.operations.map((op) => op.output),
+                ],
+              },
+              controller.signal,
+            ),
+            api<Run>(
+              route,
+              { revision_id: model.head, inputs: rows },
+              controller.signal,
+            ),
+          ]);
       Promise.all([
-        api<Run>(
-          route,
-          {
-            revision_id: model.head,
-            inputs: [inputs],
-            captures: [
-              model.spec.input_name,
-              ...model.spec.operations.map((op) => op.output),
-            ],
-          },
-          controller.signal,
-        ),
-        api<Run>(
-          route,
-          { revision_id: model.head, inputs: rows },
-          controller.signal,
-        ),
+        main,
         api<Run>(
           route,
           { revision_id: model.original, inputs: rows },
           controller.signal,
         ),
       ])
-        .then(([result, curve, original]) => {
+        .then(([[result, curve], original]) => {
           if (!controller.signal.aborted) {
             setRun(result);
             setSweep(curve);
             setOriginalSweep(original);
+            setComputedKey(draftKey);
           }
         })
         .catch((e) => {
@@ -196,7 +251,7 @@ export function App() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [model?.spec.id, model?.head, JSON.stringify(inputs)]);
+  }, [draftKey, JSON.stringify(inputs), staleDraft]);
 
   const selectedValue = parameter
     ? coordinate.length === 1
@@ -232,29 +287,88 @@ export function App() {
   async function applyEdit() {
     if (
       !model ||
-      !Number.isFinite(Number(editValue)) ||
+      staleDraft ||
+      !savedParameters ||
+      !Number.isFinite(Math.fround(Number(editValue))) ||
       editValue.trim() === ""
     )
       return;
+    setError("");
+    const change: Change = {
+      tensor_id: tensorId,
+      index: [...coordinate],
+      value: Math.fround(Number(editValue)),
+    };
+    const tensor = savedParameters!.tensors[tensorId];
+    const original =
+      coordinate.length === 1
+        ? (tensor.values as number[])[coordinate[0]]
+        : (tensor.values as number[][])[coordinate[0]][coordinate[1]];
+    const next = changes.filter((item) => cellKey(item) !== cellKey(change));
+    if (change.value !== original) next.push(change);
+    if (next.length > 4096) {
+      setError("A draft can contain at most 4,096 parameter changes.");
+      return;
+    }
+    next.sort((a, b) => cellKey(a).localeCompare(cellKey(b)));
+    setDrafts((all) => {
+      const updated = { ...all };
+      if (next.length)
+        updated[activeId] = {
+          base_revision: draft?.base_revision ?? model.head,
+          idempotency_key: crypto.randomUUID(),
+          changes: next,
+        };
+      else delete updated[activeId];
+      return updated;
+    });
+  }
+  function discardDraft() {
+    setDrafts((all) => {
+      const updated = { ...all };
+      delete updated[activeId];
+      return updated;
+    });
+    setEditValue(
+      parameterText(
+        savedParameters
+          ? coordinate.length === 1
+            ? (savedParameters.tensors[tensorId].values as number[])[
+                coordinate[0]
+              ]
+            : (savedParameters.tensors[tensorId].values as number[][])[
+                coordinate[0]
+              ][coordinate[1]]
+          : undefined,
+      ),
+    );
+    setError("");
+  }
+  async function saveDraft() {
+    if (!model || !draft || staleDraft) return;
     setBusy(true);
     setError("");
     try {
       await api(`/models/${model.spec.id}/revisions`, {
-        base_revision: model.head,
-        idempotency_key: crypto.randomUUID(),
-        changes: [
-          { tensor_id: tensorId, index: coordinate, value: Number(editValue) },
-        ],
+        base_revision: draft.base_revision,
+        idempotency_key: draft.idempotency_key,
+        changes,
       });
       await refresh();
+      setDrafts((all) => {
+        const updated = { ...all };
+        delete updated[activeId];
+        return updated;
+      });
     } catch (e) {
       setError((e as Error).message);
+      await refresh().catch(() => {});
     } finally {
       setBusy(false);
     }
   }
   async function restore(revision: string) {
-    if (!model) return;
+    if (!model || draft) return;
     setBusy(true);
     setError("");
     try {
@@ -271,6 +385,11 @@ export function App() {
   }
 
   const dense = operation?.kind === "dense" ? operation : undefined;
+  const unstaged =
+    selectedValue !== undefined &&
+    (editValue.trim() === "" ||
+      !Number.isFinite(Math.fround(Number(editValue))) ||
+      Math.fround(Number(editValue)) !== selectedValue);
   const neuron =
     tensorId === dense?.weight || tensorId === dense?.bias ? coordinate[0] : 0;
 
@@ -395,8 +514,8 @@ export function App() {
           <div className="sidebar-note">
             <strong>Local execution</strong>
             <p>
-              Parameters stay on this machine. Every edit is saved as a separate
-              revision.
+              Stage related edits in a draft, preview their effect, then save
+              them together as one revision.
             </p>
           </div>
           <div className="sidebar-footer">
@@ -437,7 +556,7 @@ export function App() {
                 </div>
                 <button
                   className="secondary-button"
-                  disabled={busy || model.head === model.original}
+                  disabled={busy || !!draft || model.head === model.original}
                   onClick={() => void restore(model.original)}
                 >
                   <RotateCcw size={14} /> Restore original
@@ -463,11 +582,85 @@ export function App() {
                 <span
                   className={model.head === model.original ? "" : "modified"}
                 >
-                  {model.head === model.original
-                    ? "Original checkpoint"
-                    : "Modified checkpoint"}
+                  {draft
+                    ? "Unsaved draft"
+                    : model.head === model.original
+                      ? "Original checkpoint"
+                      : "Modified checkpoint"}
                 </span>
               </div>
+              {draft && (
+                <section className="draft-bar" aria-label="Parameter draft">
+                  <div>
+                    <strong>
+                      {changes.length} staged parameter change
+                      {changes.length === 1 ? "" : "s"}
+                    </strong>
+                    <p>
+                      {staleDraft
+                        ? "The saved model changed. This draft has not been rebased. Discard it to use the latest revision."
+                        : "Previewing unsaved changes. Save the whole draft as one revision."}
+                    </p>
+                    <small>
+                      Based on {draft.base_revision.slice(0, 8)} · recovered on
+                      refresh in this browser tab.
+                    </small>
+                  </div>
+                  <div className="draft-actions">
+                    <button
+                      className="draft-save"
+                      disabled={busy || staleDraft || unstaged}
+                      onClick={() => void saveDraft()}
+                    >
+                      Save revision
+                    </button>
+                    <button disabled={busy} onClick={discardDraft}>
+                      Discard draft
+                    </button>
+                  </div>
+                  {unstaged && (
+                    <p>
+                      Stage or reset the current editor value before saving.
+                    </p>
+                  )}
+                  {storageError && <p role="alert">{storageError}</p>}
+                  <details>
+                    <summary>Review staged changes</summary>
+                    <ul>
+                      {changes.map((change) => (
+                        <li key={cellKey(change)}>
+                          <code>
+                            {change.tensor_id}[{change.index.join(", ")}] →{" "}
+                            {parameterText(change.value)}
+                          </code>
+                          <button
+                            disabled={busy}
+                            aria-label={`Unstage ${change.tensor_id} [${change.index.join(", ")}]`}
+                            onClick={() =>
+                              setDrafts((all) => {
+                                const updated = { ...all };
+                                const remaining = all[activeId].changes.filter(
+                                  (item) => cellKey(item) !== cellKey(change),
+                                );
+                                if (remaining.length)
+                                  updated[activeId] = {
+                                    ...all[activeId],
+                                    changes: remaining,
+                                    idempotency_key: crypto.randomUUID(),
+                                  };
+                                else delete updated[activeId];
+                                return updated;
+                              })
+                            }
+                          >
+                            Undo
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </section>
+              )}
               <section className="canvas-card">
                 <div className="canvas-toolbar">
                   <div className="view-tabs">
@@ -589,6 +782,8 @@ export function App() {
                       key={model.spec.id}
                       model={model}
                       history={history}
+                      changes={changes}
+                      blocked={staleDraft}
                       onNeuron={(id, index) => {
                         selectNode(id, index);
                         setFocusAuditNeuron(true);
@@ -713,6 +908,8 @@ export function App() {
           coordinate={coordinate}
           draft={editValue}
           busy={busy}
+          hasDraft={!!draft}
+          editBlocked={staleDraft}
           history={history}
           onDraft={setEditValue}
           onApply={applyEdit}

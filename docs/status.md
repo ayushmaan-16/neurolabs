@@ -10,6 +10,9 @@ This is the first foundation preview, not completion of Phase 0 or Phase 1.
 - Real deterministic-setting PyTorch CPU forward passes and selected intermediate captures.
 - Content-addressed safetensors, integrity checking, SQLite revisions, atomic scalar/batch
   cell edits, stale-base rejection, idempotency, and revision restore/branching.
+- Per-model parameter drafts: stage multiple edits with live preview/diagnostics, review
+  or undo changes, discard, and save the entire group as one revision. Same-tab reload
+  recovery, stale-head protection and saved/draft provenance keep experiments distinct.
 - Local FastAPI routes, session/origin guards, persistent run results, OpenAPI docs.
 - React overview, operation selection, parameter grid/editor, computation breakdown,
   live inputs, response slices, original comparison, and revision history.

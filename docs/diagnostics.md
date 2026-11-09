@@ -49,8 +49,10 @@ Captum attribution, isolate a causal neuron, or explain why a prediction is corr
 3. Choose an original or saved reference revision and click **Analyze batch**.
 4. Select a layer and filter its neurons. **Inspect in 3D** selects the corresponding
    neuron; dense networks open its full incoming/outgoing connections.
-5. Inspect a changed input, edit a parameter, and return to Diagnostics. The batch is
-   retained; the outdated report is cleared. Re-run the audit to measure the edit.
+5. Inspect a changed input, stage one or more parameter edits, and return to Diagnostics.
+   The batch is retained; the outdated report is cleared. Re-run to measure the complete
+   unsaved draft against the reference. The report explicitly labels its draft provenance.
+   Save revision commits the group once; Discard draft returns to the saved parameters.
 6. Download the JSON report to retain exact inputs/outputs, full per-neuron statistics,
    thresholds, input/spec/parameter SHA-256 fingerprints, revision IDs and runtime provenance.
 
@@ -61,9 +63,10 @@ reference revision, model or current weights invalidates results, including pend
 
 An exact demonstration: select the original rectified curve and audit rows `0.5`, `1`,
 and `2`. Hidden neuron 2 is zero throughout that positive-input batch. Inspect it and
-change its bias from 0 to 2, then re-run against Original: the largest output change is
-0.6, and the neuron is no longer inactive on every supplied input. Restoring Original
-reverses the experiment. Negative input batches show why the original neuron was not
+stage its bias from 0 to 2, then re-run against Original: the largest output change is
+0.6, and the neuron is no longer inactive on every supplied input. Discard draft reverses
+the preview, or save it as a revision and then Restore Original. Negative input batches
+show why the original neuron was not
 globally dead.
 
 ![An activation audit and measured output changes after a bias edit](images/batch-diagnostics.png)

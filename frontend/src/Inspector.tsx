@@ -23,7 +23,8 @@ function ParameterEditor({
   onDraft: (value: string) => void;
   onApply: () => Promise<void>;
 }) {
-  const valid = draft.trim() !== "" && Number.isFinite(Number(draft));
+  const valid =
+    draft.trim() !== "" && Number.isFinite(Math.fround(Number(draft)));
   const changed =
     valid && value !== undefined && Math.fround(Number(draft)) !== value;
   const disabled = busy || !changed;
@@ -44,14 +45,14 @@ function ParameterEditor({
           }}
         />
         <button
-          aria-label="Apply parameter edit"
+          aria-label="Stage parameter edit"
           disabled={disabled}
           onClick={() => void onApply()}
         >
-          {busy ? <LoaderCircle className="spin" size={13} /> : "Apply"}
+          {busy ? <LoaderCircle className="spin" size={13} /> : "Stage"}
         </button>
       </div>
-      {changed && <span className="inspector-draft">Unapplied change</span>}
+      {changed && <span className="inspector-draft">Unstaged change</span>}
     </div>
   );
 }
@@ -72,6 +73,8 @@ export function Inspector({
   onApply,
   onSelectParameter,
   onRestore,
+  hasDraft = false,
+  editBlocked = false,
 }: {
   model: Model | undefined;
   operation: Operation | undefined;
@@ -88,6 +91,8 @@ export function Inspector({
   onApply: () => Promise<void>;
   onSelectParameter: (id: string, index: number[]) => void;
   onRestore: (revision: string) => Promise<void>;
+  hasDraft?: boolean;
+  editBlocked?: boolean;
 }) {
   const dense = operation?.kind === "dense" ? operation : undefined;
   const input = !operation;
@@ -146,7 +151,7 @@ export function Inspector({
       label={edge ? "Weight" : "Bias"}
       value={edge ? weight : bias}
       draft={draft}
-      busy={busy}
+      busy={busy || editBlocked}
       onDraft={onDraft}
       onApply={onApply}
     />
@@ -295,7 +300,7 @@ export function Inspector({
               {history.map((revision) => (
                 <button
                   key={revision.id}
-                  disabled={busy || model.head === revision.id}
+                  disabled={busy || hasDraft || model.head === revision.id}
                   className={model.head === revision.id ? "current" : ""}
                   onClick={() => void onRestore(revision.id)}
                 >

@@ -39,7 +39,7 @@ test("batch inactivity, report export, 3D inspection and revision impact form on
   await expect(page.locator(".three-viewport canvas")).toBeVisible();
   await expect(page.getByTestId("neuron-preactivation")).toHaveText("-0.5");
   await page.getByLabel("Bias", { exact: true }).fill("2");
-  await page.getByRole("button", { name: "Apply parameter edit" }).click();
+  await page.getByRole("button", { name: "Stage parameter edit" }).click();
   await expect(page.locator(".output-values strong")).toHaveText("0.9");
   await page.getByRole("button", { name: "Diagnostics", exact: true }).click();
   await expect(page.getByLabel("Input batch", { exact: false })).toHaveValue(
@@ -62,6 +62,9 @@ test("batch inactivity, report export, 3D inspection and revision impact form on
     .click();
   await expect(page.getByLabel("Input 0", { exact: true })).toHaveValue("0.5");
   await page
+    .getByRole("button", { name: "Save revision", exact: true })
+    .click();
+  await page
     .getByRole("button", { name: "Restore original", exact: true })
     .click();
   await expect(page.locator(".output-values strong")).toHaveText("0.3");
@@ -74,13 +77,11 @@ test("custom CSV, dense neuron inspection, out-of-range cases and narrow audit l
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await page.getByRole("button", { name: "Diagnostics", exact: true }).click();
-  await page
-    .getByLabel("Load input CSV")
-    .setInputFiles({
-      name: "invalid.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from("input\n1\n2"),
-    });
+  await page.getByLabel("Load input CSV").setInputFiles({
+    name: "invalid.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("input\n1\n2"),
+  });
   await expect(page.getByRole("alert")).toContainText("finite float32");
   await page.getByRole("button", { name: "Dense sixteen" }).click();
   await page
@@ -110,13 +111,11 @@ test("custom CSV, dense neuron inspection, out-of-range cases and narrow audit l
   await expect(
     page.getByText("33 inputs analyzed", { exact: true }),
   ).toBeVisible();
-  await page
-    .getByLabel("Load input CSV")
-    .setInputFiles({
-      name: "validation.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from("0,0,0,0\n10,0,0,0"),
-    });
+  await page.getByLabel("Load input CSV").setInputFiles({
+    name: "validation.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("0,0,0,0\n10,0,0,0"),
+  });
   await expect(
     page.getByRole("button", { name: "Download report", exact: true }),
   ).toHaveCount(0);

@@ -40,6 +40,8 @@ export type Run = {
   outputs: number[][];
   activations: Record<string, number[][]>;
   elapsed_ms: number;
+  is_draft?: boolean;
+  base_revision?: string;
 };
 
 let session: Promise<string> | undefined;

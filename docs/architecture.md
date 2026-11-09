@@ -16,7 +16,7 @@ strict model compatibility, and milestone-driven delivery. Initial planning assu
 - Stable operation/tensor identifiers. Dense weights are `[output, input]`; inputs are
   `[batch, input]`. Execution is `X @ W.T + b`.
 - One authoritative PyTorch CPU execution path. React visualizes returned results.
-- Each committed edit creates an immutable revision, records requested and effective
+- Each saved change set creates one immutable revision, records requested and effective
   float32 values, and references content-addressed safetensors artifacts.
 - A run names its revision and effective input hash. The UI must never display a result
   as current if either has changed. Original parameters remain intact.
@@ -44,6 +44,16 @@ verified on read, and written atomically before revision metadata commits. One t
 commits a revision and moves the active head. Restoring a revision does not delete history.
 Data defaults to `%LOCALAPPDATA%/neuroLabs` on Windows and `~/.local/share/neuroLabs`
 elsewhere, outside the OneDrive-synced repository. `NEUROLABS_DATA_DIR` overrides this.
+
+The browser stages related parameter edits in one per-model draft. Staging updates a
+read-only preview, not model history. Drafts recover from session storage in the same
+browser tab. Save revision submits up to 4,096 unique changed coordinates in one atomic,
+idempotent request against the recorded base revision. Repeated edits of a coordinate
+collapse; unchanged effective float32 values are omitted, and all-no-op saves are rejected.
+Discard removes the draft. History checkout is blocked until saving/discarding, and a
+concurrent saved-head change preserves but blocks the stale draft rather than rebasing it.
+Preview/diagnostic results identify the unsaved draft and its base; saved snapshots remain
+unchanged. Draft forward-pass replay uses the actual captured preview values.
 
 The API is versioned under `/api/v1`. Loopback binding, Host/Origin validation, and a
 per-launch credential protect browser requests. This is a single-user application,

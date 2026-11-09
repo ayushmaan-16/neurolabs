@@ -29,8 +29,11 @@ test("edit, rerun, reload, and restore an exact linear model", async ({
   await expect(page.locator(".output-values strong")).toHaveText("0.5");
   await clickGraphTarget(page, "Select connection linear.weight [0, 0]");
   await page.getByLabel("Weight", { exact: true }).fill("1.5");
-  await page.getByRole("button", { name: "Apply parameter edit" }).click();
+  await page.getByRole("button", { name: "Stage parameter edit" }).click();
   await expect(page.locator(".output-values strong")).toHaveText("1.5");
+  await page
+    .getByRole("button", { name: "Save revision", exact: true })
+    .click();
   await expect(
     page.getByText("Modified checkpoint", { exact: true }),
   ).toBeVisible();
@@ -142,7 +145,7 @@ test("edges and neurons have distinct inspectors and edits recompute outputs", a
   await expect(page.getByTestId("edge-input")).toHaveText("1.5");
   await expect(page.getByTestId("edge-contribution")).toHaveText("1.2");
   await page.locator("#parameter-value").fill("1.8");
-  await page.getByRole("button", { name: "Apply parameter edit" }).click();
+  await page.getByRole("button", { name: "Stage parameter edit" }).click();
   await expect(page.locator(".output-values strong")).toHaveText("1.8");
   await clickGraphTarget(page, "Select readout neuron 0");
   await expect(page.locator(".inspector")).toHaveAttribute(
@@ -152,8 +155,11 @@ test("edges and neurons have distinct inspectors and edits recompute outputs", a
   await expect(page.getByLabel("Bias", { exact: true })).toBeVisible();
   await expect(page.getByTestId("neuron-bias")).toHaveValue("-0.3");
   await page.locator("#parameter-value").fill("0.2");
-  await page.getByRole("button", { name: "Apply parameter edit" }).click();
+  await page.getByRole("button", { name: "Stage parameter edit" }).click();
   await expect(page.locator(".output-values strong")).toHaveText("2.3");
+  await page
+    .getByRole("button", { name: "Save revision", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Restore original", exact: true })
     .click();
@@ -328,18 +334,21 @@ test("inspectors show one editor, collapse details, and retain restoration", asy
   await clickGraphTarget(page, "Select readout neuron 0");
   await expect(page.getByLabel("Bias", { exact: true })).toHaveValue("-0.3");
   await expect(
-    page.getByRole("button", { name: "Apply parameter edit" }),
+    page.getByRole("button", { name: "Stage parameter edit" }),
   ).toBeDisabled();
   await page.getByLabel("Bias", { exact: true }).fill("-0.3");
   await expect(
-    page.getByRole("button", { name: "Apply parameter edit" }),
+    page.getByRole("button", { name: "Stage parameter edit" }),
   ).toBeDisabled();
   await page.getByLabel("Bias", { exact: true }).fill("0.2");
   await expect(
-    panel.getByText("Unapplied change", { exact: true }),
+    panel.getByText("Unstaged change", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Apply parameter edit" }).click();
+  await page.getByRole("button", { name: "Stage parameter edit" }).click();
   await expect(page.locator(".output-values strong")).toHaveText("0.8");
+  await page
+    .getByRole("button", { name: "Save revision", exact: true })
+    .click();
   await panel.locator(".inspector-history summary").click();
   await panel.getByRole("button", { name: /Original model/ }).click();
   await expect(page.locator(".output-values strong")).toHaveText("0.3");

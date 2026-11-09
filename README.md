@@ -46,10 +46,11 @@ environment variable remain supported, so the rename preserves saved revisions.
 
 1. Select **The linear map**, whose original behavior is `f(x) = 0.5x`.
 2. Change input `x₀` and inspect the output and response plot.
-3. Click the connection, change its weight to `1` in the inspector, and apply the edit.
+3. Click the connection, change its weight to `1` in the inspector, and press **Stage**.
 4. Compare the current curve with the dashed original curve.
-5. Restore the original checkpoint, or select a previous revision in history.
-6. Reload the browser: the current revision persists.
+5. Stage other related edits, then click **Save revision** once to commit the group.
+6. Restore the original checkpoint, or select a previous revision in history.
+7. Reload the browser: saved revisions persist, and unsaved drafts recover in the same tab.
 
 The other fixtures demonstrate a piecewise-linear ReLU curve and XOR classification.
 They are analytic examples, not trained-model performance claims. XOR outputs are logits.
@@ -68,8 +69,17 @@ Playback timing is illustrative. Changing input or weights clears the previous t
 Click a string to open that connection's weight and current incoming
 activation × weight in the inspector. Click a neuron to inspect its activation function,
 weighted sum, output and bias. Neurons with biases select their bias editor automatically.
-Enter a value and press Apply or Enter: outputs and the response plot recompute,
-while the original remains available to restore.
+Enter a value and press **Stage** or Enter: outputs and the response plot preview the
+unsaved draft. Edit several weights/biases, then **Save revision** to commit them atomically
+as one revision. **Discard draft** restores the saved parameters. Re-editing one coordinate
+updates the same pending change; returning it to its saved value unstages it. Up to 4,096
+changed coordinates can be grouped. Review/undo individual changes in the draft bar.
+Drafts are isolated per model and recover after refreshing the same browser tab; they are
+not saved model revisions until explicitly committed. A changed saved head blocks a stale
+draft rather than silently rebasing it. Saved revision history/restoration is available
+after saving or discarding the draft. The original model remains intact.
+
+![Two parameter edits previewed together before saving one revision](docs/images/revision-draft.png)
 The inspector keeps one relevant editor per selection. Incoming neuron contributions
 and revision history expand on demand. Full tensors and matrix selection are available
 in the Weights tab; input neurons show only their input value. Displayed edit values

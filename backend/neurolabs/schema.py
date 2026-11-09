@@ -125,3 +125,10 @@ class DiagnosticRequest(Contract):
     inputs: tuple[Annotated[tuple[float, ...], Field(min_length=1, max_length=256)], ...] = Field(
         min_length=2, max_length=256
     )
+    changes: tuple[CellEdit, ...] = Field(default=(), max_length=4096)
+
+
+class DraftPreviewRequest(Contract):
+    base_revision: str = Field(min_length=1, max_length=64)
+    changes: tuple[CellEdit, ...] = Field(min_length=1, max_length=4096)
+    inputs: tuple[float, ...] = Field(min_length=1, max_length=256)

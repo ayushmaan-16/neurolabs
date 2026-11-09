@@ -11,9 +11,16 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from neurolabs.diagnostics import analyze
+from neurolabs.editing import apply_changes, draft_id
 from neurolabs.runtime import execute
 from neurolabs.samples import samples
-from neurolabs.schema import CheckoutRequest, DiagnosticRequest, EditRequest, RunRequest
+from neurolabs.schema import (
+    CheckoutRequest,
+    DiagnosticRequest,
+    DraftPreviewRequest,
+    EditRequest,
+    RunRequest,
+)
 from neurolabs.store import ConflictError, Store
 
 
@@ -149,14 +156,32 @@ def create_app(root: Path | None = None) -> FastAPI:
     def diagnostics(model_id: str, request: DiagnosticRequest):
         spec, values = store.snapshot(model_id, request.revision_id)
         _, baseline = store.snapshot(model_id, request.baseline_revision_id)
-        return analyze(
+        values, changes = apply_changes(spec, values, request.changes)
+        revision = draft_id(request.revision_id, changes) if changes else request.revision_id
+        report = analyze(
             spec,
             values,
             baseline,
             request.inputs,
-            request.revision_id,
+            revision,
             request.baseline_revision_id,
         )
+        if changes:
+            report.update(draft_base_revision_id=request.revision_id, draft_changes=changes)
+        return report
+
+    @app.post("/api/v1/models/{model_id}/draft-preview")
+    def preview(model_id: str, request: DraftPreviewRequest):
+        spec, values = store.snapshot(model_id, request.base_revision)
+        values, changes = apply_changes(spec, values, request.changes)
+        revision = draft_id(request.base_revision, changes)
+        captures = (spec.input_name, *(op.output for op in spec.operations))
+        rows = [[-2 + index / 16, *request.inputs[1:]] for index in range(65)]
+        run = execute(spec, values, [request.inputs], revision, captures)
+        run.update(id=revision, is_draft=True, base_revision=request.base_revision)
+        sweep = execute(spec, values, rows, revision)
+        sweep.update(id=revision, is_draft=True, base_revision=request.base_revision)
+        return {"run": run, "sweep": sweep}
 
     dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
     if dist.is_dir():

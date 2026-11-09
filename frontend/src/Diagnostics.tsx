@@ -1,23 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type Model, type Revision } from "./api";
 import { type Audit, metric, parseBatch, probeBatch } from "./audit-data";
+import type { Change } from "./draft-state";
 
 export function Diagnostics({
   model,
   history,
   onNeuron,
   onCase,
+  changes,
+  blocked = false,
 }: {
   model: Model;
   history: Revision[];
   onNeuron: (layer: string, index: number) => void;
   onCase: (inputs: number[]) => void;
+  changes: Change[];
+  blocked?: boolean;
 }) {
   const [draft, setDraft] = useState(() => probeBatch(model));
   const [source, setSource] = useState("Generated probe set");
   const [baseline, setBaseline] = useState(model.original);
   const [report, setReport] = useState<Audit | null>(null);
-  const [analyzedDraft, setAnalyzedDraft] = useState("");
+  const [analyzedKey, setAnalyzedKey] = useState("");
+  const changesKey = JSON.stringify(changes);
+  const requestKey = JSON.stringify([
+    model.head,
+    baseline,
+    draft,
+    changesKey,
+    blocked,
+  ]);
   const [layerId, setLayerId] = useState("");
   const [filter, setFilter] = useState("all");
   const [pending, setPending] = useState(false);
@@ -29,7 +42,7 @@ export function Diagnostics({
     setPending(false);
     setReport(null);
     setError("");
-  }, [model.head, baseline, draft]);
+  }, [model.head, baseline, draft, changesKey, blocked]);
   useEffect(
     () => () => {
       controller.current?.abort();
@@ -37,12 +50,7 @@ export function Diagnostics({
     },
     [],
   );
-  const current =
-    report?.revision_id === model.head &&
-    report.baseline_revision_id === baseline &&
-    analyzedDraft === draft
-      ? report
-      : null;
+  const current = report && analyzedKey === requestKey ? report : null;
   const layer =
     current?.layers.find((item) => item.id === layerId) ?? current?.layers[0];
   const neurons =
@@ -60,6 +68,7 @@ export function Diagnostics({
   ].filter((value, index, all) => all.indexOf(value) === index);
 
   async function analyze() {
+    if (blocked) return;
     const abort = new AbortController();
     controller.current?.abort();
     controller.current = abort;
@@ -74,12 +83,13 @@ export function Diagnostics({
           revision_id: model.head,
           baseline_revision_id: baseline,
           inputs,
+          changes,
         },
         abort.signal,
       );
       if (!abort.signal.aborted) {
         setReport(result);
-        setAnalyzedDraft(draft);
+        setAnalyzedKey(requestKey);
         setFilter("all");
       }
     } catch (error) {
@@ -116,7 +126,7 @@ export function Diagnostics({
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `neurolabs-${model.spec.id}-${model.head.slice(0, 8)}-audit.json`;
+    link.download = `neurolabs-${model.spec.id}-${model.head.slice(0, 8)}${changes.length ? "-draft" : ""}-audit.json`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -174,7 +184,11 @@ export function Diagnostics({
           </div>
         </div>
         <div className="audit-settings">
-          <label htmlFor="audit-baseline">Compare current revision with</label>
+          <label htmlFor="audit-baseline">
+            {changes.length
+              ? "Compare unsaved draft with"
+              : "Compare current revision with"}
+          </label>
           <select
             id="audit-baseline"
             value={baseline}
@@ -196,13 +210,13 @@ export function Diagnostics({
           <button
             className="audit-run"
             onClick={() => void analyze()}
-            disabled={pending}
+            disabled={pending || blocked}
           >
             {pending ? "Analyzing…" : "Analyze batch"}
           </button>
           <small>
-            Changes to weights or inputs invalidate the report. Re-run to
-            refresh it.
+            Changes to staged parameters or inputs invalidate the report. Re-run
+            to refresh it.
           </small>
         </div>
       </div>
@@ -416,8 +430,10 @@ export function Diagnostics({
             </table>
           </div>
           <p className="audit-provenance">
-            Current {current.revision_id.slice(0, 8)} · baseline{" "}
-            {current.baseline_revision_id.slice(0, 8)} · input hash{" "}
+            {changes.length
+              ? `Unsaved draft of ${model.head.slice(0, 8)}`
+              : `Current ${current.revision_id.slice(0, 8)}`}{" "}
+            · baseline {current.baseline_revision_id.slice(0, 8)} · input hash{" "}
             {current.input_hash.slice(0, 12)}. Export includes the full batch,
             per-neuron statistics, revision IDs and runtime provenance.
           </p>
